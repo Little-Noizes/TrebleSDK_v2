@@ -1,0 +1,282 @@
+[
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 125,
+    "target_val": 13.165590542424892,
+    "predicted_val": 0.0,
+    "error": -13.165590542424892
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 250,
+    "target_val": 1.737356677734789,
+    "predicted_val": 0.0,
+    "error": -1.737356677734789
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 500,
+    "target_val": 2.064623544394138,
+    "predicted_val": 0.0,
+    "error": -2.064623544394138
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 1000,
+    "target_val": 1.7400407273077134,
+    "predicted_val": 0.0,
+    "error": -1.7400407273077134
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 2000,
+    "target_val": 1.6293415676176661,
+    "predicted_val": 0.0,
+    "error": -1.6293415676176661
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 4000,
+    "target_val": NaN,
+    "predicted_val": 0.0,
+    "error": NaN
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "EDTS",
+    "f_hz": 8000,
+    "target_val": NaN,
+    "predicted_val": 0.0,
+    "error": NaN
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 125,
+    "target_val": 7.32779355711259,
+    "predicted_val": 0.0,
+    "error": -7.32779355711259
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 250,
+    "target_val": 2.142713190849889,
+    "predicted_val": 0.0,
+    "error": -2.142713190849889
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 500,
+    "target_val": 1.9711673085619557,
+    "predicted_val": 0.0,
+    "error": -1.9711673085619557
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 1000,
+    "target_val": 1.8655706201215343,
+    "predicted_val": 0.0,
+    "error": -1.8655706201215343
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 2000,
+    "target_val": 1.9854653344730453,
+    "predicted_val": 0.0,
+    "error": -1.9854653344730453
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 4000,
+    "target_val": 1.690791176322017,
+    "predicted_val": 0.0,
+    "error": -1.690791176322017
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "EDTS",
+    "f_hz": 8000,
+    "target_val": 1.1461165064337462,
+    "predicted_val": 0.0,
+    "error": -1.1461165064337462
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 125,
+    "target_val": 9.882089774391556,
+    "predicted_val": 0.0,
+    "error": -9.882089774391556
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 250,
+    "target_val": 2.250474097476301,
+    "predicted_val": 0.0,
+    "error": -2.250474097476301
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 500,
+    "target_val": 1.927797778604206,
+    "predicted_val": 0.0,
+    "error": -1.927797778604206
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 1000,
+    "target_val": 1.8909802202744295,
+    "predicted_val": 0.0,
+    "error": -1.8909802202744295
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 2000,
+    "target_val": 1.9503309476696495,
+    "predicted_val": 0.0,
+    "error": -1.9503309476696495
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 4000,
+    "target_val": 1.703975008769205,
+    "predicted_val": 0.0,
+    "error": -1.703975008769205
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "EDTS",
+    "f_hz": 8000,
+    "target_val": 1.057711670813734,
+    "predicted_val": 0.0,
+    "error": -1.057711670813734
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 125,
+    "target_val": 12.032028536809085,
+    "predicted_val": 0.0,
+    "error": -12.032028536809085
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 250,
+    "target_val": 2.059535531725459,
+    "predicted_val": 0.0,
+    "error": -2.059535531725459
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 500,
+    "target_val": 1.8771931655104077,
+    "predicted_val": 0.0,
+    "error": -1.8771931655104077
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 1000,
+    "target_val": 1.9087794952763548,
+    "predicted_val": 0.0,
+    "error": -1.9087794952763548
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 2000,
+    "target_val": 2.076412852489939,
+    "predicted_val": 0.0,
+    "error": -2.076412852489939
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 4000,
+    "target_val": 1.616332366406508,
+    "predicted_val": 0.0,
+    "error": -1.616332366406508
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "EDTS",
+    "f_hz": 8000,
+    "target_val": 0.98465100910148,
+    "predicted_val": 0.0,
+    "error": -0.98465100910148
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 125,
+    "target_val": 6.850540319838012,
+    "predicted_val": 0.0,
+    "error": -6.850540319838012
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 250,
+    "target_val": 1.8827086702787548,
+    "predicted_val": 0.0,
+    "error": -1.8827086702787548
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 500,
+    "target_val": 2.2077398197403753,
+    "predicted_val": 0.0,
+    "error": -2.2077398197403753
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 1000,
+    "target_val": 1.9342319141890416,
+    "predicted_val": 0.0,
+    "error": -1.9342319141890416
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 2000,
+    "target_val": 1.8789020340074631,
+    "predicted_val": 0.0,
+    "error": -1.8789020340074631
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 4000,
+    "target_val": 1.649398400935331,
+    "predicted_val": 0.0,
+    "error": -1.649398400935331
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "EDTS",
+    "f_hz": 8000,
+    "target_val": 0.969205800864179,
+    "predicted_val": 0.0,
+    "error": -0.969205800864179
+  }
+]

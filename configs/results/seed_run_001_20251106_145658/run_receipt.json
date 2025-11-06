@@ -1,0 +1,33 @@
+{
+  "project": "Classroom_OBJ",
+  "model": "classroom1",
+  "run_label": "seed_run_001_20251106_145752",
+  "bands_hz": [
+    63,
+    125,
+    250,
+    500,
+    1000,
+    2000,
+    4000,
+    8000
+  ],
+  "metrics": [
+    "EDT_s"
+  ],
+  "termination": {
+    "energy_decay_threshold_dB": 35.0,
+    "crossover_frequency_Hz": 720
+  },
+  "receivers": [
+    "R_30x00y",
+    "R_60x15y",
+    "R_00x20y",
+    "R_40x30y",
+    "R_15x40y"
+  ],
+  "stage1_alpha_json": "C:\\Users\\usuario\\Documents\\TrebleSDK\\v2\\configs\\results\\seed_run_001_20251106_145658\\stage1_alpha.json",
+  "results_dir": "C:\\Users\\usuario\\Documents\\TrebleSDK\\v2\\configs\\results\\seed_run_001_20251106_145658",
+  "timestamp": "2025-11-06T15:03:30",
+  "loss": 2.8636078086788794
+}

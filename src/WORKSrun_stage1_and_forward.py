@@ -1,32 +1,27 @@
-# #!/usr/bin/env python
-# # -*- coding: utf-8 -*-
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# r"""
-# run_stage1_and_forward.py — Hybrid metrics path
+r"""
+run_stage1_and_forward.py
+- Stage 1: generate constrained alpha(f) seed for all materials (src.materials.compute_stage1_alpha)
+- Stage 2: apply alpha(f), run Treble hybrid sim, compute ONLY metrics listed in YAML,
+           produce a single scalar loss via vector weighted Huber, and save logs.
 
-# Stage 1: generate constrained alpha(f) seed (src.materials.compute_stage1_alpha)
-# Stage 2: apply alpha(f), run a Treble HYBRID simulation, then read metrics
-#          from the latest *_Hybrid.json (NOT from IRs), compute a weighted
-#          Huber loss, and write receipts/logs.
-
-# CLI:
-#   (venv_treble) PS> python -m src.run_stage1_and_forward --config .\configs\project.yaml --run_label seed_run_001
-# """
+CLI:
+  (venv_treble) PS> python -m src.run_stage1_and_forward --config .\configs\project.yaml --run_label seed_run_001
+"""
 
 from __future__ import annotations
 import argparse
 import json
-import math
 import time
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Tuple, List, Optional
-from src.tidy_metrics_helpers_v2 import (
-    load_targets, load_hybrid_pred, join_metrics, compute_weighted_huber_loss
-)
+
 import yaml
 
-# ---- Treble import (robust pattern) ------------------------------------------
+# ---- Treble import (robust pattern, matches your working scripts) ------------
 try:
     from treble_tsdk import treble
     print("Using treble_tsdk")
@@ -34,9 +29,9 @@ except ImportError:
     from treble_tsdk import tsdk_namespace as treble
     print("Using treble_tsdk2")
 
-# ---- Stage 1 + Loss helper ---------------------------------------------------
+# ---- Stage 1 + Metrics helpers (the real modules you created) ----------------
 from src.materials import compute_stage1_alpha
-from src.metrics import weighted_huber_loss  # NOTE: predictions come from Hybrid JSON, not IRs
+from src.metrics import compute_metrics_from_ir, weighted_huber_loss
 
 
 # =============================================================================
@@ -69,27 +64,17 @@ def _get_bands(cfg: Dict[str, Any]) -> List[int]:
 
 
 def _normalise_metric_key(name: str) -> str:
-    """
-    Normalise metric names and map common aliases so YAML does not need changes.
-    Examples: EDT_s → edt, C50_dB → c50.
-    The result is always lowercase.
-    """
-    raw = "".join(ch for ch in str(name).strip().upper() if ch.isalnum())
-    aliases = {
-        # Time constants
-        "EDTS": "edt", "T20S": "t20", "T30S": "t30", "T60S": "t60", "RT60S": "t60",
-        # Clarity / definition / centre time
-        "C50DB": "c50", "C80DB": "c80", "D50": "d50", "TS": "ts",
-    }
-    return aliases.get(raw, raw.lower())
+    """Normalise metric names (e.g. ``EDT_s`` -> ``EDT``) for lookups."""
+    return "".join(ch for ch in name.strip().upper() if ch.isalnum())
 
 
 def _extract_receivers(cfg: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Normalise receivers list from YAML."""
+    """Accepts receivers under cfg['receivers']; supports [{'xyz_m':[x,y,z], 'label':..., 'type':...}, ...]
+        and also {'x':..,'y':..,'z':..}. Returns normalized list."""
     rcvs = cfg.get("receivers")
     if rcvs is None:
         return []
-    if isinstance(rcvs, dict):
+    if isinstance(rcvs, dict):  # allow {"items":[...]}
         rcvs = rcvs.get("items", [])
     if not isinstance(rcvs, list):
         raise ValueError("'receivers' must be a list (or a dict containing 'items').")
@@ -137,6 +122,7 @@ def _get_or_import_model(project: treble.Project, name: str, obj_path: Path) -> 
         raise FileNotFoundError(f"OBJ not found: {obj_path}")
     model = project.add_model(model_name=name, model_file_path=str(obj_path))
     if model is None:
+        # duplicate name fallback
         for m in getattr(project, "get_models", lambda: [])():
             if getattr(m, "name", None) == name:
                 return m
@@ -150,7 +136,10 @@ def _get_or_import_model(project: treble.Project, name: str, obj_path: Path) -> 
 
 
 def _upload_or_reuse_cf2(tsdk: treble.TSDK, cf2_path: Path):
-    """Create-or-reuse a CF2 directivity via source_directivity_library."""
+    """
+    Create-or-reuse via source_directivity_library.
+    If create fails due to duplicate name, scan and reuse the existing one.
+    """
     cf2_path = cf2_path.expanduser().resolve()
     if not cf2_path.exists():
         raise FileNotFoundError(f"CF2 not found: {cf2_path}")
@@ -173,8 +162,10 @@ def _upload_or_reuse_cf2(tsdk: treble.TSDK, cf2_path: Path):
         if sd_obj is not None:
             return sd_obj, "directivity"
     except Exception:
+        # likely duplicate name; reuse existing by name
         pass
 
+    # Reuse by name if exists
     try:
         for d in lib.get_organization_directivities():
             if getattr(d, "name", None) == base_name:
@@ -182,6 +173,7 @@ def _upload_or_reuse_cf2(tsdk: treble.TSDK, cf2_path: Path):
     except Exception:
         pass
 
+    # If we got here, we could not create nor find by name.
     raise RuntimeError(f"Failed to create or find CF2 directivity named '{base_name}'.")
 
 
@@ -210,8 +202,17 @@ def _apply_alpha_to_materials(
     allow_create: bool = True
 ) -> Dict[str, str]:
     """
-    Apply alpha(f) per material to the org material library.
-    Returns a redirect map original_name -> effective_name_used.
+    Apply alpha(f) per material to the org material library:
+      stage1_alpha: { material_key: {"bands_hz":[...], "alpha":[...]} }
+
+    Strategy:
+      1) Try in-place update if this SDK exposes it.
+      2) Else, create a NEW uniquely named material and return a name-redirect map:
+         { original_name: new_material_name }
+      The caller can use this to redirect MaterialAssignments to the new names.
+
+    Returns:
+      name_redirect: Dict[original_name -> effective_name_used]
     """
     lib = getattr(tsdk, "material_library", None)
     if lib is None:
@@ -232,7 +233,7 @@ def _apply_alpha_to_materials(
             if hasattr(lib, fn):
                 try:
                     getattr(lib, fn)(
-                        material_id=mat_name,   # adjust to id if required on your build
+                        material_id=mat_name,   # if your build needs an ID: swap to get_by_name->id
                         absorption_coefficients=alpha,
                         band_frequencies=bands
                     )
@@ -244,8 +245,22 @@ def _apply_alpha_to_materials(
         if updated:
             continue
 
-        # 2) Create a NEW uniquely named material
+        # 2) No update path — create a NEW uniquely named material
+        #    Avoid duplicate-name errors by checking existence first.
+        existing = None
+        if hasattr(lib, "get_by_name"):
+            try:
+                existing = lib.get_by_name(mat_name)
+            except Exception:
+                existing = None
+
+        if existing is not None and not allow_create:
+            # We refuse to create; just reuse existing name.
+            name_redirect[mat_name] = mat_name
+            continue
+
         new_name = f"{mat_name}__S1_{timestamp}"
+
         md = treble.MaterialDefinition(
             name=new_name,
             description=f"alpha(f) by Stage1 seed @ {timestamp}",
@@ -260,43 +275,6 @@ def _apply_alpha_to_materials(
         name_redirect[mat_name] = effective_name
 
     return name_redirect
-
-
-def _load_hybrid_pred_lookup(run_dir: Path) -> Dict[str, Dict[str, Dict[int, float]]]:
-    """
-    Scan run_dir for latest *_Hybrid.json and return:
-      { rcv_label: { METRIC_CANON: { band_hz:int -> value:float } } }
-    """
-    import os
-    candidates = sorted(run_dir.glob("*_Hybrid.json"), key=os.path.getmtime)
-    if not candidates:
-        raise FileNotFoundError(f"No *_Hybrid.json found in {run_dir}")
-    hybrid_path = candidates[-1]
-    print(f"[debug] using Hybrid JSON: {hybrid_path.name}")
-
-    data = json.loads(hybrid_path.read_text(encoding="utf-8"))
-    recvs = data.get("receivers") or {}
-    out: Dict[str, Dict[str, Dict[int, float]]] = {}
-    for r_id, payload in recvs.items():
-        label = payload.get("label") or r_id
-        params = payload.get("parameters") or {}
-        mblock: Dict[str, Dict[int, float]] = {}
-        for m_key, band_map in params.items():
-            if not isinstance(band_map, dict):
-                continue
-            m_norm = _normalise_metric_key(m_key)
-            per_band: Dict[int, float] = {}
-            for fk, vv in band_map.items():
-                try:
-                    per_band[int(round(float(fk)))] = float(vv)
-                except Exception:
-                    continue
-            if per_band:
-                mblock[m_norm] = per_band
-        out[str(label)] = mblock
-    if not out:
-        raise RuntimeError(f"Hybrid JSON parsed but contained no receiver parameters: {hybrid_path.name}")
-    return out
 
 
 # =============================================================================
@@ -324,9 +302,9 @@ def _build_targets_lookup(raw: Dict[str, Any], default_bands: List[int]) -> Dict
                         except (TypeError, ValueError):
                             continue
                 elif isinstance(values, dict):
-                    for key2, val2 in values.items():
+                    for key, val in values.items():
                         try:
-                            vec[str(int(round(float(key2))))] = float(val2)
+                            vec[str(int(round(float(key))))] = float(val)
                         except (TypeError, ValueError):
                             continue
                 if vec:
@@ -364,10 +342,10 @@ def _build_targets_lookup(raw: Dict[str, Any], default_bands: List[int]) -> Dict
                     except (TypeError, ValueError):
                         continue
             elif isinstance(values, dict):
-                for key2, val2 in values.items():
+                for key, val in values.items():
                     try:
-                        freq_hz = int(round(float(key2)))
-                        vec[str(int(freq_hz))] = float(val2)
+                        freq_hz = int(round(float(key)))
+                        vec[str(freq_hz)] = float(val)
                     except (TypeError, ValueError):
                         continue
             if vec:
@@ -384,8 +362,9 @@ def run_stage1_and_forward_sim(
     run_label: str
 ) -> Tuple[float, List[Dict[str, Any]]]:
     """
-    Stage-1 seed → apply materials → Stage-2 forward sim → read Hybrid JSON → vector loss.
-    Returns: (scalar_loss, detailed_rows_log)
+    Stage-1 seed → apply materials → Stage-2 forward sim → per-IR metrics → vector loss.
+    Returns:
+        (scalar_loss, detailed_rows_log)
     """
     cfg_path = Path(config_path).expanduser().resolve()
     cfg = _cfg_load(cfg_path)
@@ -455,15 +434,17 @@ def run_stage1_and_forward_sim(
         raise RuntimeError("No receivers defined in YAML.")
     print(f"✔ Source '{src.label}' and {len(rcv_list)} receiver(s) ready.")
 
-    # ---- Material assignments (layer/tag → material OBJECT) ------------------
+    # ---- Material assignments (layer/tag → material OBJECT, using redirect) -----
     tag_map = (cfg.get("tag_to_material") or {})
     assignments: List[treble.MaterialAssignment] = []
 
+    # Access material library once
     matlib = getattr(tsdk, "material_library", None)
     if matlib is None:
         raise RuntimeError("TSDK.material_library is not available in this SDK build.")
 
     def _get_material_obj_by_name(name: str):
+        """Return a material DTO/object from the library by name."""
         if hasattr(matlib, "get_by_name"):
             try:
                 obj = matlib.get_by_name(name)
@@ -484,13 +465,18 @@ def run_stage1_and_forward_sim(
     for layer_name, mat_name in tag_map.items():
         if isinstance(mat_name, dict):
             mat_name = mat_name.get("name")
+
         effective_name = name_redirect.get(mat_name, mat_name)
         mat_obj = _get_material_obj_by_name(effective_name)
         if mat_obj is None:
             raise RuntimeError(
-                f"Material '{effective_name}' not found in library. (Original YAML name: '{mat_name}')"
+                f"Material '{effective_name}' not found in library. "
+                f"(Original YAML name: '{mat_name}')"
             )
-        assignments.append(treble.MaterialAssignment(layer_name=str(layer_name), material=mat_obj))
+
+        assignments.append(
+            treble.MaterialAssignment(layer_name=str(layer_name), material=mat_obj)
+        )
 
     # ---- Simulation definition ------------------------------------------------
     calc = (cfg.get("calculation", {}) or {})
@@ -498,7 +484,10 @@ def run_stage1_and_forward_sim(
     energy_db = float(term.get("energy_decay_threshold_db", 35.0))
     crossover = calc.get("crossover_frequency_hz", 720)
 
-    sim_settings = treble.SimulationSettings(speed_of_sound=343.0, ambisonics_order=0)
+    sim_settings = treble.SimulationSettings(
+        speed_of_sound=343.0,
+        ambisonics_order=0,
+    )
 
     sim_def = treble.SimulationDefinition(
         name=run_label,
@@ -515,7 +504,10 @@ def run_stage1_and_forward_sim(
 
     # ---- Run simulation ------------------------------------------------------
     print("--- 4) Starting simulation ---")
-    sim_def.name = f"{run_label}_{datetime.now():%Y%m%d_%H%M%S}"
+
+    # Always uniquify the sim name to avoid duplicate-name errors
+    unique_suffix = datetime.now().strftime("%Y%m%d_%H%M%S")
+    sim_def.name = f"{run_label}_{unique_suffix}"
 
     def _safe_add_and_start(defn):
         try:
@@ -536,12 +528,14 @@ def run_stage1_and_forward_sim(
     sim = _safe_add_and_start(sim_def)
 
     MAX_WAIT_SECONDS = int(calc.get("timeout_seconds", 1800))
-    poll_interval = 30
+    poll_interval = 30  # seconds
     print(f"[sim] waiting up to {MAX_WAIT_SECONDS}s for completion…")
 
+    # Try to capture a stable identifier for reloading the sim each poll
     sim_id = getattr(sim, "id", None) or getattr(sim, "simulation_id", None) or sim_def.name
 
     def _reload_sim():
+        """Return a fresh sim object from the project, if possible."""
         for fn in ("get_simulation_by_id", "get_simulation", "get_simulation_by_name"):
             if hasattr(proj, fn):
                 try:
@@ -561,6 +555,7 @@ def run_stage1_and_forward_sim(
                     pass
         return sim
 
+    # Optional: try to sync cost info if available
     for fn in ("wait_for_estimate", "wait_for_token_cost"):
         if hasattr(proj, fn):
             try:
@@ -610,142 +605,117 @@ def run_stage1_and_forward_sim(
             break
         if any(k in s for k in ("failed", "error", "canceled", "cancelled")):
             raise RuntimeError(f"❌ Simulation failed with status: {status}")
+
         if elapsed > MAX_WAIT_SECONDS:
             raise TimeoutError(f"Simulation timed out after {MAX_WAIT_SECONDS}s (last status={status})")
 
         time.sleep(poll_interval)
 
     # ---- Results & metrics ---------------------------------------------------
-        # ---- Results & metrics (Hybrid JSON path) -------------------------------
     print("--- 5) Reading results & computing metrics ---")
-    # This ensures the *_Hybrid.json is downloaded into run_dir
-    _ = sim.get_results_object(results_directory=str(run_dir))
+    res = sim.get_results_object(results_directory=str(run_dir))
 
-    # Load targets and predictions as tidy tables
-    df_tgt  = load_targets(str(gt_json), default_bands=bands)
-    df_pred = load_hybrid_pred(run_dir)
+    # Prepare targets
+    targets_raw = json.loads(
+        _resolve(cfg_dir, (cfg.get("paths", {}) or {}).get("ground_truth_json")).read_text(encoding="utf-8")
+    )
+    if not isinstance(targets_raw, dict):
+        raise ValueError("Ground-truth JSON must be an object mapping.")
+    targets_lookup = _build_targets_lookup(targets_raw, bands)
 
-    # Config → metric list + bands to keep
+    # Define metrics & band window *before* any checks/use
     metrics_req: List[str] = (cfg.get("metrics", {}) or {}).get("objective_metrics") or []
-    # FIX for case-sensitivity: Canonicalize requested metrics to lowercase 
-    # to match the lowercase metric names stored in the DataFrames.
-    metrics_req = [_normalise_metric_key(m) for m in metrics_req]
-    
     band_min = (cfg.get("bands", {}) or {}).get("optimise_from_hz")
     band_max = (cfg.get("bands", {}) or {}).get("optimise_to_hz")
-    band_set = [f for f in bands if (band_min is None or f >= int(band_min))
-                              and (band_max is None or f <= int(band_max))]
+    band_set = [f for f in bands if (band_min is None or f >= int(band_min)) and (band_max is None or f <= int(band_max))]
 
-    # The receivers we actually simulated (labels)
-    keep_receivers = [getattr(r, "label", None) or getattr(r, "name", "") for r in rcv_list]
+    # Fail-fast diagnostics
+    if not metrics_req:
+        raise RuntimeError("No objective metrics configured under cfg['metrics']['objective_metrics'].")
+    if not targets_lookup:
+        raise RuntimeError("Ground-truth JSON parsed but produced an empty lookup (no receiver metrics).")
+    print(f"[debug] objective_metrics={metrics_req} | band_set={band_set} | yaml_rcvs={len(rcv_list)}")
 
-    # Inner-join (receiver, metric, band)
-    df_join = join_metrics(
-        df_tgt, df_pred,
-        keep_receivers=keep_receivers,
-        keep_metrics=metrics_req,
-        keep_bands=band_set,
-    )
+    y_true: List[float] = []
+    y_pred: List[float] = []
+    y_metric: List[str] = []
+    y_band: List[int] = []
+    y_rcv: List[str] = []
 
-    # Debug if no overlap
-    if df_join.empty:
+    # Robust source label (first source)
+    sim_sources = getattr(sim, "sources", None) or sim_def.source_list
+    source_label = getattr(sim_sources[0], "label", None) or getattr(sim_sources[0], "name", "S")
+
+    # Loop receivers, pull IRs, compute requested metrics
+        # --- Normalise metric names on both sides ---------------------------------
+    def N(x: str) -> str:
+        return "".join(ch for ch in x.strip().upper() if ch.isalnum())
+
+    metrics_req_raw: List[str] = metrics_req
+    metrics_req_norm: List[str] = [N(m) for m in metrics_req_raw]
+
+    # Loop receivers, pull IRs, compute requested metrics
+    for rcv in rcv_list:
+        r_label = getattr(rcv, "label", None) or getattr(rcv, "name", "R")
+        ir = res.get_mono_ir(source=source_label, receiver=r_label)
+
+        # compute -> raw map (likely uses names like "EDT_s")
+        pred_map_raw = compute_metrics_from_ir(ir, band_set, metrics_req_raw)  # {metric_name: {f_hz: val}}
+        # normalise keys on the prediction map
+        pred_map = {N(k): v for k, v in (pred_map_raw or {}).items()}
+
+        # targets_lookup already uses normalised keys (via _build_targets_lookup)
+        tgt_map = targets_lookup.get(r_label) or targets_lookup.get(str(r_label)) or {}
+
+        for m_norm in metrics_req_norm:
+            pred_by_f = pred_map.get(m_norm, {})
+            tgt_by_f  = tgt_map.get(m_norm, {})
+            for f in band_set:
+                f_key = str(int(f))  # targets use string keys
+                if f_key not in tgt_by_f or f not in pred_by_f:
+                    continue
+                y_true.append(float(tgt_by_f[f_key]))
+                y_pred.append(float(pred_by_f[f]))
+                y_metric.append(m_norm)
+                y_band.append(f)
+                y_rcv.append(r_label)
+
+    
+    if len(y_true) == 0:
+        # Emit helpful debug & stop instead of silently returning a huge default loss
+        sim_rcv_labels = [getattr(r, "label", None) or getattr(r, "name", "") for r in rcv_list]
         diag = {
-            "requested_metrics": metrics_req,
-            "requested_bands_hz": band_set,
-            "requested_receivers": keep_receivers,
-            "targets_keys_summary": {
-                "receivers": sorted(df_tgt["receiver"].unique().tolist()),
-                "metrics": sorted(df_tgt["metric"].unique().tolist()),
-                "bands": sorted(map(int, df_tgt["band_hz"].unique().tolist())),
-            },
-            "preds_keys_summary": {
-                "receivers": sorted(df_pred["receiver"].unique().tolist()),
-                "metrics": sorted(df_pred["metric"].unique().tolist()),
-                "bands": sorted(map(int, df_pred["band_hz"].unique().tolist())),
-            },
-            "hint": "Receiver labels, canonical metric keys (all lowercase), and bands must overlap.",
+            "metrics_requested": metrics_req,
+            "bands_requested_hz": band_set,
+            "sim_receivers": sim_rcv_labels,
+            "target_receivers": sorted(list(targets_lookup.keys())),
+            "hint": "Ensure YAML receiver labels match ground_truth_json labels, and metrics/bands overlap."
         }
-        (run_dir / "debug_zero_join.json").write_text(json.dumps(diag, indent=2), encoding="utf-8")
+        (run_dir / "zero_rows_debug.json").write_text(json.dumps(diag, indent=2), encoding="utf-8")
         raise RuntimeError(
-            "No overlapping rows after join. See debug_zero_join.json for details."
+            "No overlapping rows between predictions and targets. "
+            f"See {run_dir.name}/zero_rows_debug.json for details."
         )
-
-    # Write tidy CSVs for transparency
-    df_tgt.to_csv(run_dir / "targets_tidy.csv", index=False)
-    df_pred.to_csv(run_dir / "pred_tidy.csv", index=False)
-    df_join.to_csv(run_dir / "joined.csv", index=False)
-
-    # Weights & Huber delta from YAML (any casing is fine; helpers canonicalise)
-    weights_cfg = (cfg.get("metrics", {}) or {}).get("weights") or {}
-    deltas_cfg  = (cfg.get("metrics", {}) or {}).get("huber_delta") or {}
-
-    print("--- 6) Computing weighted Huber loss (Hybrid) ---")
-    scalar_loss = compute_weighted_huber_loss(
-        df_join,
-        weights=weights_cfg,
-        huber_delta=deltas_cfg,
-        reduction="mean",
-    )
-
-    # If the helper produced a debug_nan_rows.csv in CWD, move it into run_dir
-    from pathlib import Path as _P
-    dbg = _P("debug_nan_rows.csv")
-    if dbg.exists():
-        try:
-            dbg.rename(run_dir / "debug_nan_rows.csv")
-        except Exception:
-            pass
-
-    # Build detailed rows (nice for plotting later)
-    detailed_rows = [
-        {
-            "rcv_code": str(r),
-            "metric":  str(m),
-            "f_hz":    int(f),
-            "target_val": float(t),
-            "predicted_val": float(p),
-            "error":   float(p - t),
-        }
-        for (r, m, f, t, p) in zip(
-            df_join["receiver"].tolist(),
-            df_join["metric"].tolist(),
-            df_join["band_hz"].tolist(),
-            df_join["target"].astype(float).tolist(),
-            df_join["prediction"].astype(float).tolist(),
-        )
-    ]
 
     # ---- Loss (vector Huber) -------------------------------------------------
     print("--- 6) Computing weighted Huber loss ---")
-    weights_cfg = (cfg.get("metrics", {}) or {}).copy()
-    huber_cfg = (weights_cfg.get("loss", {}) or {}).copy()
-    delta = huber_cfg.get("huber_delta", 1.0)
-    try:
-        delta = float(delta)
-    except Exception:
-        delta = 1.0
-    if not math.isfinite(delta) or delta <= 0:
-        print(f"[warn] invalid huber_delta={huber_cfg.get('huber_delta')} → using 1.0")
-        delta = 1.0
-    huber_cfg["huber_delta"] = delta
-    weights_cfg["loss"] = huber_cfg
-    
-    # NOTE: The following section uses variables (y_true, etc) that aren't defined 
-    # in this scope but are likely remnants of older code. We will replace this 
-    # block to correctly use the scalar_loss already calculated from df_join.
-    
-    # Placeholder/Legacy cleanup: Use the loss calculated from df_join
-    # scalar_loss = weighted_huber_loss(y_true, y_pred, y_metric, y_band, y_rcv, weights_cfg) 
+    weights_cfg = (cfg.get("metrics", {}) or {})
+    scalar_loss = weighted_huber_loss(y_true, y_pred, y_metric, y_band, y_rcv, weights_cfg)
 
-    # ---- Detailed row log ----------------------------------------------------
-    # detailed_rows is already calculated above. 
-    # Placeholder/Legacy cleanup: Remove redundant calculation using y_true, etc.
-    
+    # ---- Detailed per-row log (optional) ------------------------------------
+    detailed_rows = [
+        {
+            "rcv_code": r, "metric": m, "f_hz": int(f),
+            "target_val": float(t), "predicted_val": float(p), "error": float(p - t),
+        }
+        for t, p, m, f, r in zip(y_true, y_pred, y_metric, y_band, y_rcv)
+    ]
+
     # ---- Write receipts ------------------------------------------------------
     receipt = {
         "project": project_name,
         "model": getattr(model, "name", model_name),
-        "run_label": sim_def.name,  # actual unique sim name
+        "run_label": sim_def.name,  # store the actual unique sim name
         "bands_hz": bands,
         "metrics": metrics_req,
         "termination": {"energy_decay_threshold_dB": energy_db, "crossover_frequency_Hz": crossover},
@@ -767,7 +737,7 @@ def run_stage1_and_forward_sim(
 # =============================================================================
 
 def _main():
-    ap = argparse.ArgumentParser(description="Run Stage 1 seed + forward HYBRID sim; read Hybrid JSON; compute scalar loss.")
+    ap = argparse.ArgumentParser(description="Run Stage 1 seed + Stage 2 forward sim and return scalar loss.")
     ap.add_argument("--config", required=True, help="Path to project.yaml")
     ap.add_argument("--run_label", required=False, default=f"stage1_2_{datetime.now():%Y%m%d_%H%M%S}", help="Run label/name")
     args = ap.parse_args()

@@ -9,7 +9,7 @@ model:
 paths:
   model_obj: C:/Users/usuario/Documents/TrebleSDK/v2/input/obj/classroom1.obj
   ground_truth_json: C:/Users/usuario/Documents/TrebleSDK/v2/data/omni/targets_measured_omni.json  
-  directivity_cf2: C:/Users/usuario/Documents/TrebleSDK/v2/input/directivity/GenelecOy-8030.cf2
+  directivity_cf2: C:/Users/usuario/Documents/TrebleSDK/v2/input/directivity/GenelecOy-8030_v2.cf2
   working_dir: "results"             # base for run outputs
   temp_dir: "results/.tmp"           # scratch
 
@@ -175,16 +175,16 @@ tag_to_material:
 
 # What weâ€™ll compare against the ground truth and how we weight it.
 metrics:
-  objective_metrics: ["EDT"]         # or ["T20", "EDT", "C50"]
+  objective_metrics: ["t20"]         # or ["T20", "EDT", "C50"]
   weights:                           # optional per-metric weights (default = 1.0)
-    EDT: 1.0
-    T20: 0.8
-    C50: 0.5
+    edt: 0.5
+    t20: 1.0
+    c50: 0.5
   # Huber delta in natural units (s or dB) per metric
   huber_delta:
-    EDT: 0.5
-    T20: 0.5
-    C50: 1.0
+    edt: 0.5
+    t20: 1.0
+    c50: 0.5
 
 # Treble calculation parameters (hybrid = GA + DG)
 calculation:
