@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 
 # --- CONFIG (edit as needed) --------------------------------------------------
 TARGETS_FILE =    "C:/Users/usuario/Documents/TrebleSDK/v2/data/omni/targets_measured_omni.json"          # (optional, not required to plot)
-ALPHA_SEED_FILE = "C:/Users/usuario/Documents/TrebleSDK/v2/configs/results/seed_run_001_20251106_145658/stage1_alpha.json"                # required for 1_0 plot
-RESULTS_LOG_FILE ="C:/Users/usuario/Documents/TrebleSDK/v2/configs/results/seed_run_001_20251106_145658/detailed_results_log.json"       # required for comparisons
+ALPHA_SEED_FILE = "C:/Users/usuario/Documents/TrebleSDK/v2/configs/results/seed_run_001_20251107_091608/stage1_alpha.json"                # required for 1_0 plot
+RESULTS_LOG_FILE ="C:/Users/usuario/Documents/TrebleSDK/v2/configs/results/seed_run_001_20251107_091608/detailed_results_log.json"       # required for comparisons
 
 FINAL_LOSS = 2.863608
 RCV_CODES = ["R_30x00y", "R_60x15y", "R_00x20y", "R_40x30y", "R_15x40y"]

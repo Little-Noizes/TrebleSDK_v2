@@ -222,3 +222,19 @@ optimisation:
   parallel_evaluations: 4
   random_seed: 42
   results_folder: "results/optimisation"   # under working_dir
+  # GA parameters
+ga:
+  pop_size: 18
+  generations_A: 12
+  generations_B: 10
+  alpha_sigma: 0.03         # std-dev for α perturbations
+  scatter_sigma: 0.05       # std-dev for s perturbations
+  alpha_bounds: [0.00, 1.00]
+  scatter_bounds: [0.00, 0.50]
+  selection: "tournament"   # or "roulette"
+  tourn_k: 3
+  cx_prob: 0.5
+  mut_prob: 0.7
+  cx_eta: 0.3               # blend crossover alpha
+  stageA_metrics: ["t20","t30"]
+  stageB_metrics: ["c50","c80"]

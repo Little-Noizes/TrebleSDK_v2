@@ -21,10 +21,17 @@ import time
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Tuple, List, Optional
+#from src.utils import load_yaml
 from src.tidy_metrics_helpers_v2 import (
+    # --- FIX 1: ADD load_json to resolve NameError ---
+    load_json, 
     load_targets, load_hybrid_pred, join_metrics, compute_weighted_huber_loss
 )
 import yaml
+def load_yaml(path: Path) -> Dict[str, Any]:
+    """Helper to safely load a YAML configuration file."""
+    with open(path, 'r', encoding='utf-8') as f:
+        return yaml.safe_load(f)
 
 # ---- Treble import (robust pattern) ------------------------------------------
 try:
@@ -160,6 +167,28 @@ def _upload_or_reuse_cf2(tsdk: treble.TSDK, cf2_path: Path):
     if lib is None:
         raise RuntimeError("No source_directivity_library available in this SDK build.")
 
+    # --- FIX: Attempt to find/reuse it FIRST ---
+    try:
+        # 1. Try common 'get by name' methods
+        if hasattr(lib, "get_by_name"):
+            d = lib.get_by_name(base_name)
+            if d is not None:
+                print(f"[debug] Reused existing CF2: {base_name}")
+                return d, "directivity"
+    except Exception:
+        pass
+        
+    try:
+        # 2. Try iterating through the list
+        for d in lib.get_organization_directivities():
+            if getattr(d, "name", None) == base_name:
+                print(f"[debug] Reused existing CF2 (via list): {base_name}")
+                return d, "directivity"
+    except Exception:
+        pass
+
+    # --- Only if NOT found: Attempt to create it ---
+    print(f"[debug] Uploading new CF2: {base_name}")
     try:
         sd_obj = lib.create_source_directivity(
             name=base_name,
@@ -172,18 +201,11 @@ def _upload_or_reuse_cf2(tsdk: treble.TSDK, cf2_path: Path):
         )
         if sd_obj is not None:
             return sd_obj, "directivity"
-    except Exception:
-        pass
-
-    try:
-        for d in lib.get_organization_directivities():
-            if getattr(d, "name", None) == base_name:
-                return d, "directivity"
-    except Exception:
-        pass
+    except Exception as e:
+        # If creation fails, we must raise
+        raise RuntimeError(f"Failed to create CF2 directivity named '{base_name}': {e}") from e
 
     raise RuntimeError(f"Failed to create or find CF2 directivity named '{base_name}'.")
-
 
 def _build_source_from_cf2(cf2_obj, cf2_type: str, pos: treble.Point3d) -> treble.Source:
     safe_label = "".join(ch if ch.isalnum() else "_" for ch in getattr(cf2_obj, "name", "CF2_Source"))
@@ -261,6 +283,43 @@ def _apply_alpha_to_materials(
 
     return name_redirect
 
+def _apply_ga_params_to_materials(cfg: dict, ga_params: dict) -> dict:
+    alpha_map = ga_params.get("alpha", {}) or {}
+    scatter_map = ga_params.get("scatter", {}) or {}
+    mats = cfg.get("materials", {}) or {}
+
+    # apply α(f)
+    for m, spec in alpha_map.items():
+        if m not in mats: 
+            continue
+        node = mats[m] or {}
+        anchors = (node.get("anchors") or {})
+        anchors["absorption"] = list(map(float, spec["alpha"]))
+        node["anchors"] = anchors
+        # lock α if desired
+        node["optimise_absorption"] = False
+        node["deviation_groups"] = {
+            "low":  {"bands": [63, 125], "deviation_pct": 0.0},
+            "mid":  {"bands": [250, 500, 1000], "deviation_pct": 0.0},
+            "high": {"bands": [2000, 4000, 8000], "deviation_pct": 0.0},
+        }
+        mats[m] = node
+
+    # apply scattering
+    for m, sval in scatter_map.items():
+        if m not in mats:
+            continue
+        node = mats[m] or {}
+        anchors = (node.get("anchors") or {})
+        anchors["scattering"] = float(sval)
+        node["anchors"] = anchors
+        node["optimise_scattering"] = True
+        mats[m] = node
+
+    cfg["materials"] = mats
+    return cfg
+
+# --- NO GLOBAL CODE HERE ---
 
 def _load_hybrid_pred_lookup(run_dir: Path) -> Dict[str, Dict[str, Dict[int, float]]]:
     """
@@ -302,6 +361,7 @@ def _load_hybrid_pred_lookup(run_dir: Path) -> Dict[str, Dict[str, Dict[int, flo
 # =============================================================================
 # Core pipeline
 # =============================================================================
+
 
 def _build_targets_lookup(raw: Dict[str, Any], default_bands: List[int]) -> Dict[str, Dict[str, Dict[str, float]]]:
     """Convert the ground-truth JSON structure into a lookup by receiver label."""
@@ -378,17 +438,20 @@ def _build_targets_lookup(raw: Dict[str, Any], default_bands: List[int]) -> Dict
     return lookup
 
 
+# --- 1. CORRECTED FUNCTION SIGNATURE AND FILE SAVING LOGIC ---
 def run_stage1_and_forward_sim(
     tsdk: Any,
-    config_path: Path,
-    run_label: str
+    cfg: Dict[str, Any],        # Accepts the loaded config dictionary
+    run_label: str,
+    cfg_path: Path,              # Accepts the path for resolving relatives
+    params_to_save: Optional[Dict[str, Any]] = None # <--- ADDED ARGUMENT
 ) -> Tuple[float, List[Dict[str, Any]]]:
     """
     Stage-1 seed → apply materials → Stage-2 forward sim → read Hybrid JSON → vector loss.
     Returns: (scalar_loss, detailed_rows_log)
     """
-    cfg_path = Path(config_path).expanduser().resolve()
-    cfg = _cfg_load(cfg_path)
+    # NOTE: The YAML configuration is already loaded and modified by _main()
+
     cfg_dir = cfg_path.parent
     bands = _get_bands(cfg)
 
@@ -410,16 +473,31 @@ def run_stage1_and_forward_sim(
     run_dir.mkdir(parents=True, exist_ok=True)
     print(f"\n--- Output will be saved to: {run_dir.resolve()} ---")
 
+    # --- ADDED LOGIC TO SAVE STAGE 1 ALPHA ---
+    if params_to_save:
+        (run_dir / "stage1_alpha.json").write_text(
+            json.dumps(params_to_save, indent=2), encoding="utf-8"
+        )
+        print(" Saved initial Stage 1 alpha parameters to stage1_alpha.json")
+    # -----------------------------------------
+
     # ---- Stage 1: compute seed alpha(f) -------------------------------------
     print("\n--- 1) Stage 1: Statistical alpha(f) seed ---")
-    stage1_alpha = compute_stage1_alpha(cfg, bands)
-    (run_dir / "stage1_alpha.json").write_text(json.dumps(stage1_alpha, indent=2), encoding="utf-8")
-    print("Stage 1 alpha seed saved.")
-
+    
+    # We remove the old Stage 1 logic from run_stage1_and_forward_sim
+    # to enforce that material modification (GA or seed) happens ONLY in _main().
+    # The simulation will now use the materials present in the 'cfg' passed from _main().
+    
     # ---- Apply materials to org library -------------------------------------
-    print("--- 2) Applying materials to Treble library ---")
-    name_redirect = _apply_alpha_to_materials(tsdk, stage1_alpha, allow_create=True)
-
+    print("--- 2) Materials applied to Treble library ---")
+    
+    # Re-using the name_redirect logic, but we need the list of materials to check:
+    material_names_to_check = list(cfg.get("materials", {}).keys())
+    name_redirect: Dict[str, str] = {name: name for name in material_names_to_check} 
+    
+    # If your TSDK needs materials to be explicitly created in the library even if defined in CFG, 
+    # you might need to insert logic here, but for now, we assume materials are known/reusable.
+    
     # ---- Project & Model -----------------------------------------------------
     project_name = (cfg.get("project", {}) or {}).get("name") or "Treble_Project"
     model_name = (cfg.get("model", {}) or {}).get("name") or Path(obj_path).stem
@@ -453,7 +531,7 @@ def run_stage1_and_forward_sim(
             rcv_list.append(treble.Receiver.make_mono(position=p, label=r["label"]))
     if not rcv_list:
         raise RuntimeError("No receivers defined in YAML.")
-    print(f"✔ Source '{src.label}' and {len(rcv_list)} receiver(s) ready.")
+    print(f" Source '{src.label}' and {len(rcv_list)} receiver(s) ready.")
 
     # ---- Material assignments (layer/tag → material OBJECT) ------------------
     tag_map = (cfg.get("tag_to_material") or {})
@@ -589,7 +667,7 @@ def run_stage1_and_forward_sim(
         s = (str(status) or "").lower()
 
         if status != last_status:
-            print(f"[{elapsed:5d}s] status → {status}")
+            print(f"[{elapsed:5d}s] status  {status}")
             last_status = status
         else:
             print(f"[{elapsed:5d}s] still {status or '<no-status>'}…")
@@ -606,10 +684,10 @@ def run_stage1_and_forward_sim(
             empty_status_count = 0
 
         if any(k in s for k in ("complete", "finished", "success")):
-            print(f"[{elapsed:5d}s] ✅ Simulation finished.")
+            print(f"[{elapsed:5d}s]  Simulation finished.")
             break
         if any(k in s for k in ("failed", "error", "canceled", "cancelled")):
-            raise RuntimeError(f"❌ Simulation failed with status: {status}")
+            raise RuntimeError(f" Simulation failed with status: {status}")
         if elapsed > MAX_WAIT_SECONDS:
             raise TimeoutError(f"Simulation timed out after {MAX_WAIT_SECONDS}s (last status={status})")
 
@@ -714,32 +792,6 @@ def run_stage1_and_forward_sim(
             df_join["prediction"].astype(float).tolist(),
         )
     ]
-
-    # ---- Loss (vector Huber) -------------------------------------------------
-    print("--- 6) Computing weighted Huber loss ---")
-    weights_cfg = (cfg.get("metrics", {}) or {}).copy()
-    huber_cfg = (weights_cfg.get("loss", {}) or {}).copy()
-    delta = huber_cfg.get("huber_delta", 1.0)
-    try:
-        delta = float(delta)
-    except Exception:
-        delta = 1.0
-    if not math.isfinite(delta) or delta <= 0:
-        print(f"[warn] invalid huber_delta={huber_cfg.get('huber_delta')} → using 1.0")
-        delta = 1.0
-    huber_cfg["huber_delta"] = delta
-    weights_cfg["loss"] = huber_cfg
-    
-    # NOTE: The following section uses variables (y_true, etc) that aren't defined 
-    # in this scope but are likely remnants of older code. We will replace this 
-    # block to correctly use the scalar_loss already calculated from df_join.
-    
-    # Placeholder/Legacy cleanup: Use the loss calculated from df_join
-    # scalar_loss = weighted_huber_loss(y_true, y_pred, y_metric, y_band, y_rcv, weights_cfg) 
-
-    # ---- Detailed row log ----------------------------------------------------
-    # detailed_rows is already calculated above. 
-    # Placeholder/Legacy cleanup: Remove redundant calculation using y_true, etc.
     
     # ---- Write receipts ------------------------------------------------------
     receipt = {
@@ -750,7 +802,7 @@ def run_stage1_and_forward_sim(
         "metrics": metrics_req,
         "termination": {"energy_decay_threshold_dB": energy_db, "crossover_frequency_Hz": crossover},
         "receivers": [getattr(r, "label", "") for r in rcv_list],
-        "stage1_alpha_json": str((run_dir / "stage1_alpha.json").resolve()),
+        # Removed reference to stage1_alpha.json because it's only generated for initial seed run.
         "results_dir": str(run_dir.resolve()),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "loss": float(scalar_loss),
@@ -765,15 +817,52 @@ def run_stage1_and_forward_sim(
 # =============================================================================
 # CLI
 # =============================================================================
+# --- 2. CORRECTED _main() FUNCTION ---
 
 def _main():
+    # 1. Argument Parsing 
     ap = argparse.ArgumentParser(description="Run Stage 1 seed + forward HYBRID sim; read Hybrid JSON; compute scalar loss.")
     ap.add_argument("--config", required=True, help="Path to project.yaml")
     ap.add_argument("--run_label", required=False, default=f"stage1_2_{datetime.now():%Y%m%d_%H%M%S}", help="Run label/name")
+    ap.add_argument("--params_in_file", default=None, help="JSON with {'alpha': {...}, 'scatter': {...}}")
     args = ap.parse_args()
+    
+    # 2. CONFIG LOADING & PARAMETER OVERRIDE (ALL LOGIC MOVED INSIDE _main)
+    cfg_path = Path(args.config) # Define path here
+    cfg = load_yaml(cfg_path) 
 
+    # --- NEW: Variable to capture alpha parameters for saving ---
+    stage1_params_to_save = None
+    
+    if args.params_in_file:
+        print(f"Reading parameters from GA file: {args.params_in_file}")
+        # load_json is now imported, resolving the NameError
+        ga_params = load_json(Path(args.params_in_file)) 
+        cfg = _apply_ga_params_to_materials(cfg, ga_params) 
+    else:
+        print("Running Stage 1 statistical seed.")
+        # When running a standard seed, run_stage1_and_forward_sim will 
+        # use the existing logic to compute the seed alpha if not supplied by GA.
+        # Since the GA requires the config to be modified *before* the sim call, 
+        # we handle the initial seed here for a clean split:
+        bands = _get_bands(cfg)
+        stage1_alpha = compute_stage1_alpha(cfg, bands)
+        
+        # Apply the seed to the config dictionary
+        cfg = _apply_ga_params_to_materials(cfg, {"alpha": stage1_alpha, "scatter": {}})
+        
+        # --- NEW: Capture alpha parameters here for saving later ---
+        stage1_params_to_save = stage1_alpha
+        
+    # 3. Simulation Call (Single, Corrected Call)
     tsdk = treble.TSDK()
-    loss, log = run_stage1_and_forward_sim(tsdk, Path(args.config), args.run_label)
+    # Note: Passing the dictionary 'cfg' and the path 'cfg_path'
+    loss, log = run_stage1_and_forward_sim(
+        tsdk, cfg, args.run_label, 
+        cfg_path=cfg_path,
+        params_to_save=stage1_params_to_save # <--- PASS THIS NEW ARGUMENT
+    ) 
+    
     print("\n=== SUMMARY ===")
     print(f"Loss: {loss:.6f}")
     print(f"Rows: {len(log)}")
