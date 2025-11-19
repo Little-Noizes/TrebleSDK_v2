@@ -1,0 +1,245 @@
+{
+  "id": "019a9b68-99be-7d18-a544-3e5fb09ed77c",
+  "projectId": "6c0a7228-dc76-4412-a432-f41b88398b54",
+  "name": "GA_calib_008_A_20251119_201834",
+  "description": null,
+  "simulationType": "Hybrid",
+  "impulseLengthSec": 4.786911687952873,
+  "crossoverFrequency": 720,
+  "modelDefinitionId": "c60bec38-87c7-4703-b67f-aa2a12e71fc9",
+  "originalGeometryLibraryId": null,
+  "onTaskError": "Ignore",
+  "category": "Default",
+  "tags": [
+    "stage1_seed",
+    "forward_eval"
+  ],
+  "receivers": [
+    {
+      "id": "019a9b68-99be-7867-883e-74b16eaa431c",
+      "receiverType": "Mono",
+      "label": "R_30x00y",
+      "x": 4.5,
+      "y": 1.9,
+      "z": 1.5,
+      "orderNumber": 0,
+      "receiverProperties": null,
+      "tags": []
+    },
+    {
+      "id": "019a9b68-99be-7f92-90ea-bdd6507ad464",
+      "receiverType": "Mono",
+      "label": "R_60x15y",
+      "x": 7.5,
+      "y": 3.4,
+      "z": 1.5,
+      "orderNumber": 1,
+      "receiverProperties": null,
+      "tags": []
+    },
+    {
+      "id": "019a9b68-99be-732a-92b0-2060d95cc741",
+      "receiverType": "Mono",
+      "label": "R_00x20y",
+      "x": 1.5,
+      "y": 4,
+      "z": 1.5,
+      "orderNumber": 2,
+      "receiverProperties": null,
+      "tags": []
+    },
+    {
+      "id": "019a9b68-99be-75a6-9806-c4f07f3c5918",
+      "receiverType": "Mono",
+      "label": "R_40x30y",
+      "x": 5.5,
+      "y": 5,
+      "z": 1.5,
+      "orderNumber": 3,
+      "receiverProperties": null,
+      "tags": []
+    },
+    {
+      "id": "019a9b68-99be-7e1f-a9fc-474382f4d17b",
+      "receiverType": "Mono",
+      "label": "R_15x40y",
+      "x": 3,
+      "y": 6,
+      "z": 1.5,
+      "orderNumber": 4,
+      "receiverProperties": null,
+      "tags": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "019a9b68-99be-7142-8820-ff3210b4c73d",
+      "tasks": [
+        {
+          "id": "5243e99f-e67e-49bc-bca9-89e6979435e1",
+          "name": "GA_GenelecOy_8030_v2",
+          "taskType": "GA",
+          "status": "Completed",
+          "createdAt": "2025-11-19T09:18:39.185367Z",
+          "startedAt": "2025-11-19T09:18:51.773203Z",
+          "completedAt": "2025-11-19T09:19:28.032759Z",
+          "progressPercentage": 100,
+          "statusMessage": "Generating impulse responses",
+          "taskSubType": "None",
+          "tokensCost": 0.010013
+        },
+        {
+          "id": "0e98c106-f4c9-48ad-9d1e-84d777aac311",
+          "name": "DG_GenelecOy_8030_v2",
+          "taskType": "DG",
+          "status": "Completed",
+          "createdAt": "2025-11-19T09:18:39.185345Z",
+          "startedAt": "2025-11-19T09:18:48.395127Z",
+          "completedAt": "2025-11-19T09:29:03.91264Z",
+          "progressPercentage": 100,
+          "statusMessage": "Postprocessing finished",
+          "taskSubType": "Omni",
+          "tokensCost": 0.232888
+        },
+        {
+          "id": "9f064860-332b-4c4f-94c4-059e6bde4a9b",
+          "name": "DG_GenelecOy_8030_v2",
+          "taskType": "DG",
+          "status": "Completed",
+          "createdAt": "2025-11-19T09:18:39.185348Z",
+          "startedAt": "2025-11-19T09:18:48.722474Z",
+          "completedAt": "2025-11-19T09:29:07.430745Z",
+          "progressPercentage": 100,
+          "statusMessage": "Postprocessing finished",
+          "taskSubType": "Dipole",
+          "tokensCost": 0.232888
+        },
+        {
+          "id": "3c831af8-2f7d-4469-8cc0-1dd5e8d10afe",
+          "name": "JoinDirectivity_Source_GenelecOy_8030_v2",
+          "taskType": "JoinDirectivity",
+          "status": "Completed",
+          "createdAt": "2025-11-19T09:29:07.463496Z",
+          "startedAt": "2025-11-19T09:29:11.235119Z",
+          "completedAt": "2025-11-19T09:29:14.286731Z",
+          "progressPercentage": 100,
+          "statusMessage": "Starting",
+          "taskSubType": "None",
+          "tokensCost": null
+        },
+        {
+          "id": "410050b3-be2d-4304-a0d7-5e29da0cf17d",
+          "name": "Hybrid_Source_GenelecOy_8030_v2",
+          "taskType": "Hybrid",
+          "status": "Completed",
+          "createdAt": "2025-11-19T09:29:14.336749Z",
+          "startedAt": "2025-11-19T09:29:20.047893Z",
+          "completedAt": "2025-11-19T09:29:29.694345Z",
+          "progressPercentage": 100,
+          "statusMessage": "Preprocessing job",
+          "taskSubType": "None",
+          "tokensCost": null
+        }
+      ],
+      "sourceType": "Directive",
+      "label": "GenelecOy_8030_v2",
+      "x": 4.5,
+      "y": 0.53,
+      "z": 1.5,
+      "orderNumber": 0,
+      "tags": [],
+      "sourceProperties": {
+        "azimuthAngle": 0,
+        "elevationAngle": 0,
+        "sourceDirectivityId": "039833a4-772c-436d-9b01-c7c0da6fd509",
+        "boundaryVelocitySubmodelId": null,
+        "sourceBoundaryLayerName": null,
+        "sourceBoundaryMeshLocalSizing": null,
+        "sourceBoundaryMeshKeepExteriorEdges": null,
+        "disableSourceCorrection": null,
+        "irLengthOverride": null,
+        "useWaveBasedPattern": null
+      }
+    }
+  ],
+  "layerMaterialAssignments": [
+    {
+      "materialId": "62b73ad6-1239-497b-8311-077c73b8d549",
+      "materialName": "My_Plasterboard_Ceiling__S1_20251119_201606",
+      "layerId": "c560b168-e012-45f0-80d1-e5e7d007659e",
+      "layerName": "ceiling_plaster",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "99944540-69d2-4ea7-94a0-8af97992009c",
+      "materialName": "My_Solid_Core_Door__S1_20251119_201606",
+      "layerId": "89bc2d82-8bb8-4b97-8ed9-dd92e2c3b683",
+      "layerName": "door_timber",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "312e52f7-d2b9-44b5-ba65-2184833c5e45",
+      "materialName": "My_Linoleum_on_Slab__S1_20251119_201606",
+      "layerId": "0e617621-a1f6-4f4b-acb4-76e249825fc6",
+      "layerName": "floor_linoleum",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "0f4e5928-ec3e-4cab-864b-1ff2ae637bd0",
+      "materialName": "My_Timber_Platform_Dense__S1_20251119_201606",
+      "layerId": "16af6b64-afa5-46f4-9e3d-58dd0efad84c",
+      "layerName": "platform",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "fdbdd89f-c642-40b7-9675-4e553c519111",
+      "materialName": "My_Painted_Plasterboard__S1_20251119_201606",
+      "layerId": "a3162b78-d387-49c3-8037-143a56fa7b65",
+      "layerName": "walls_plasterboard",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "a215ebb7-e390-4295-8376-dc6be84493bf",
+      "materialName": "My_Whiteboard_Gloss__S1_20251119_201606",
+      "layerId": "3f7bb2da-e654-40d9-8ff4-d737001646e6",
+      "layerName": "whiteboard",
+      "scatteringCoefficient": null
+    },
+    {
+      "materialId": "74d5d152-4750-4a79-971e-f461499a1cbe",
+      "materialName": "My_Glass_10mm__S1_20251119_201606",
+      "layerId": "6eef2603-752d-4dd2-bef3-b74d219ebfcf",
+      "layerName": "window",
+      "scatteringCoefficient": null
+    }
+  ],
+  "localMeshSizing": [],
+  "simulationSettings": {
+    "speedOfSound": 343,
+    "gaSettings": {
+      "numberOfRays": 50000,
+      "ISMOrder": 2,
+      "isAirAbsorptionActive": true,
+      "ISMRayCount": 500000,
+      "gaSolverType": "IsmPressureRayRadiosity"
+    },
+    "dgSettings": {
+      "polynomialOrder": 4,
+      "disableBcOptimizations": null,
+      "dumpRawIrs": null,
+      "skipPostprocessing": null
+    }
+  },
+  "energyDecayThreshold": 35,
+  "resultStatus": {
+    "result_code": 0,
+    "result_code_name": "Ok",
+    "message": null
+  },
+  "mesherSettings": null,
+  "metadata": null,
+  "createdAt": "2025-11-19T09:18:34.9425Z",
+  "updatedAt": "2025-11-19T09:29:29.736096Z",
+  "status": "Completed",
+  "project_id": "6c0a7228-dc76-4412-a432-f41b88398b54"
+}

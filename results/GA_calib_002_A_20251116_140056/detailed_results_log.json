@@ -1,0 +1,314 @@
+[
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 63,
+    "target_val": 2.7314456450549325,
+    "predicted_val": 1.461867560531124,
+    "error": -1.2695780845238085
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 125,
+    "target_val": 5.643971212346544,
+    "predicted_val": 1.3736794049205987,
+    "error": -4.270291807425946
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 250,
+    "target_val": 2.211440041572608,
+    "predicted_val": 1.234386262418448,
+    "error": -0.97705377915416
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 500,
+    "target_val": 2.1185543566886302,
+    "predicted_val": 1.3598487045406256,
+    "error": -0.7587056521480047
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 1000,
+    "target_val": 1.8779081891794835,
+    "predicted_val": 1.140758076083653,
+    "error": -0.7371501130958305
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 2000,
+    "target_val": 2.0188694891591314,
+    "predicted_val": 1.4074706448135132,
+    "error": -0.6113988443456182
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 4000,
+    "target_val": 1.7492404436901166,
+    "predicted_val": 1.454518982811333,
+    "error": -0.2947214608787836
+  },
+  {
+    "rcv_code": "R_00x20y",
+    "metric": "t20",
+    "f_hz": 8000,
+    "target_val": 1.1546544929687,
+    "predicted_val": 0.9557094566590185,
+    "error": -0.1989450363096814
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 63,
+    "target_val": 2.4042264479123165,
+    "predicted_val": 1.5195798848918778,
+    "error": -0.8846465630204388
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 125,
+    "target_val": 5.24870473061876,
+    "predicted_val": 1.3118905648200059,
+    "error": -3.9368141657987543
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 250,
+    "target_val": 2.2362975029086773,
+    "predicted_val": 1.2240570658408485,
+    "error": -1.0122404370678288
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 500,
+    "target_val": 2.04183443304955,
+    "predicted_val": 1.379926203580532,
+    "error": -0.6619082294690182
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 1000,
+    "target_val": 1.8425500081023867,
+    "predicted_val": 1.1641655537393025,
+    "error": -0.6783844543630841
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 2000,
+    "target_val": 1.975355402317205,
+    "predicted_val": 1.4421055300650072,
+    "error": -0.5332498722521979
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 4000,
+    "target_val": 1.6921628899740322,
+    "predicted_val": 1.4212040902694196,
+    "error": -0.27095879970461256
+  },
+  {
+    "rcv_code": "R_15x40y",
+    "metric": "t20",
+    "f_hz": 8000,
+    "target_val": 1.1413500485963997,
+    "predicted_val": 0.9829347492598084,
+    "error": -0.15841529933659126
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 63,
+    "target_val": 2.5228254703312136,
+    "predicted_val": 1.077890682504048,
+    "error": -1.4449347878271657
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 125,
+    "target_val": 4.5181704440481925,
+    "predicted_val": 1.4780536057042057,
+    "error": -3.0401168383439865
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 250,
+    "target_val": 2.5270500732315675,
+    "predicted_val": 1.5719629680671934,
+    "error": -0.9550871051643741
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 500,
+    "target_val": 2.0474574192894757,
+    "predicted_val": 1.2472155784372894,
+    "error": -0.8002418408521863
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 1000,
+    "target_val": 1.900576150470351,
+    "predicted_val": 1.1590209282394532,
+    "error": -0.7415552222308976
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 2000,
+    "target_val": 1.9494637000876818,
+    "predicted_val": 1.4129842752052226,
+    "error": -0.5364794248824591
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 4000,
+    "target_val": 1.7283309144215306,
+    "predicted_val": 1.4427519935046513,
+    "error": -0.2855789209168793
+  },
+  {
+    "rcv_code": "R_30x00y",
+    "metric": "t20",
+    "f_hz": 8000,
+    "target_val": 1.1190407202398613,
+    "predicted_val": 0.9908292108468556,
+    "error": -0.12821150939300574
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 63,
+    "target_val": 2.408793926515104,
+    "predicted_val": 1.4065852508678902,
+    "error": -1.0022086756472137
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 250,
+    "target_val": 2.3088797109074415,
+    "predicted_val": 1.293927771681448,
+    "error": -1.0149519392259936
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 500,
+    "target_val": 2.269310960562598,
+    "predicted_val": 1.2956856916682375,
+    "error": -0.9736252688943603
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 1000,
+    "target_val": 1.906945453642093,
+    "predicted_val": 1.1902256700563665,
+    "error": -0.7167197835857264
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 2000,
+    "target_val": 2.00015735657735,
+    "predicted_val": 1.4686743726915785,
+    "error": -0.5314829838857715
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 4000,
+    "target_val": 1.7134505406232012,
+    "predicted_val": 1.4521234576263329,
+    "error": -0.26132708299686835
+  },
+  {
+    "rcv_code": "R_40x30y",
+    "metric": "t20",
+    "f_hz": 8000,
+    "target_val": 1.1538209280348974,
+    "predicted_val": 1.0044964969833747,
+    "error": -0.1493244310515227
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 63,
+    "target_val": 2.482007554301767,
+    "predicted_val": 1.3192040639102731,
+    "error": -1.1628034903914939
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 125,
+    "target_val": 6.203911889674429,
+    "predicted_val": 1.4011796139007486,
+    "error": -4.80273227577368
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 250,
+    "target_val": 2.1605912368237647,
+    "predicted_val": 1.2295810626919395,
+    "error": -0.9310101741318253
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 500,
+    "target_val": 2.1601015400130805,
+    "predicted_val": 1.303298928199162,
+    "error": -0.8568026118139185
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 1000,
+    "target_val": 1.9201734173887237,
+    "predicted_val": 1.0649786497287728,
+    "error": -0.855194767659951
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 2000,
+    "target_val": 2.0170344827541955,
+    "predicted_val": 1.420010173902537,
+    "error": -0.5970243088516585
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 4000,
+    "target_val": 1.7365657787420206,
+    "predicted_val": 1.4152383294813302,
+    "error": -0.32132744926069035
+  },
+  {
+    "rcv_code": "R_60x15y",
+    "metric": "t20",
+    "f_hz": 8000,
+    "target_val": 1.1573123959465188,
+    "predicted_val": 0.9475604014179445,
+    "error": -0.2097519945285743
+  }
+]

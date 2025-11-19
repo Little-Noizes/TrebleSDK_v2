@@ -1,6 +1,0 @@
-== sanity_check 2025-11-04T10:48:12 ==
-[OK ] Treble SDK initialised
-[OK ] Logged in as: <unknown>
-[OK ] My projects count: 8
-[OK ] Found YAML: C:\Users\usuario\Documents\TrebleSDK\v2\configs\classroom1.yaml
-[ERR] Missing CF2: input\GenelecOy-8030.cf2

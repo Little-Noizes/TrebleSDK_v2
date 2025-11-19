@@ -1,0 +1,460 @@
+project:
+  name: Classroom_OBJ
+  run_label: baseline_v2
+model:
+  name: classroom1
+paths:
+  model_obj: C:/Users/usuario/Documents/TrebleSDK/v2/input/obj/classroom1.obj
+  ground_truth_json: C:/Users/usuario/Documents/TrebleSDK/v2/data/omni/targets_measured_omni.json
+  directivity_cf2: C:/Users/usuario/Documents/TrebleSDK/v2/input/directivity/GenelecOy-8030_v2.cf2
+  working_dir: C:/Users/usuario/Documents/TrebleSDK/v2/results
+  temp_dir: C:/Users/usuario/Documents/TrebleSDK/v2/results/.tmp
+bands:
+  kind: octave
+  f_hz:
+  - 63
+  - 125
+  - 250
+  - 500
+  - 1000
+  - 2000
+  - 4000
+  - 8000
+  optimise_from_hz: 63
+receivers:
+- id: 1
+  name: 30x00y
+  rcv_code: R_30x00y
+  xyz_m:
+  - 4.5
+  - 1.9
+  - 1.5
+- id: 2
+  name: 60x15y
+  rcv_code: R_60x15y
+  xyz_m:
+  - 7.5
+  - 3.4
+  - 1.5
+- id: 3
+  name: 00x20y
+  rcv_code: R_00x20y
+  xyz_m:
+  - 1.5
+  - 4
+  - 1.5
+- id: 4
+  name: 40x30y
+  rcv_code: R_40x30y
+  xyz_m:
+  - 5.5
+  - 5.0
+  - 1.5
+- id: 5
+  name: 15x40y
+  rcv_code: R_15x40y
+  xyz_m:
+  - 3
+  - 6.0
+  - 1.5
+source:
+  kind: directive
+  directivity_file: '@paths.directivity_cf2'
+  position_m:
+  - 4.5
+  - 0.53
+  - 1.5
+  orientation_deg_xyz:
+  - 0.0
+  - 0.0
+  - 0.0
+materials:
+  My_Plasterboard_Ceiling:
+    description: Plain plasterboard ceiling
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.038765110238468264
+      - 0.15594786082953843
+      - 0.03208746861529051
+      - 0.01
+      - 0.7202745998845989
+      - 0.3212428799748284
+      - 0.3595299865933163
+      - 0.1549863473660675
+      scattering:
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Painted_Plasterboard:
+    description: Painted plasterboard walls
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.07375451937633425
+      - 0.052820464327041
+      - 0.0
+      - 0.010000000000000002
+      - 0.01
+      - 0.1338316099207678
+      - 0.0
+      - 0.14666902792362443
+      scattering:
+      - 0.07
+      - 0.07
+      - 0.07
+      - 0.08
+      - 0.08
+      - 0.09
+      - 0.09
+      - 0.1
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Glass_10mm:
+    description: Monolithic glass 10 mm
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.2182510288682335
+      - 0.009999999999999998
+      - 0.01
+      - 0.019095441367438105
+      - 0.03706972431271305
+      - 0.2798090762037358
+      - 0.0
+      - 0.05901938066501542
+      scattering:
+      - 0.2
+      - 0.2
+      - 0.25
+      - 0.25
+      - 0.3
+      - 0.3
+      - 0.3
+      - 0.3
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Timber_Platform_Dense:
+    description: Timber platform, dense
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.01
+      - 0.0
+      - 0.0
+      - 0.08653685393726791
+      - 0.02455942359989252
+      - 0.0
+      - 0.13526999145226673
+      - 0.0
+      scattering:
+      - 0.15
+      - 0.15
+      - 0.15
+      - 0.15
+      - 0.18
+      - 0.18
+      - 0.2
+      - 0.2
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Solid_Core_Door:
+    description: Solid core door
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.06281738106348962
+      - 0.004697308484494907
+      - 0.21392027663390906
+      - 0.09270848582754439
+      - 0.13815563010289875
+      - 0.012480431311127738
+      - 0.32844547962481413
+      - 0.14869444882294716
+      scattering:
+      - 0.1
+      - 0.1
+      - 0.12
+      - 0.12
+      - 0.14
+      - 0.14
+      - 0.16
+      - 0.16
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Whiteboard_Gloss:
+    description: Gloss whiteboard
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.0006140253733576649
+      - 0.0
+      - 0.03856268829020755
+      - 0.01
+      - 0.22472782906367544
+      - 0.151474928284265
+      - 0.5430211347249158
+      - 0.0659040917292127
+      scattering:
+      - 0.12
+      - 0.12
+      - 0.14
+      - 0.14
+      - 0.15
+      - 0.16
+      - 0.16
+      - 0.16
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 0.8
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+  My_Linoleum_on_Slab:
+    description: Linoleum on concrete slab
+    type: full_octave_absorption
+    area_m2_override: null
+    optimise: true
+    optimise_absorption: true
+    optimise_scattering: false
+    anchors:
+      absorption:
+      - 0.007168211701342302
+      - 0.01
+      - 0.018007570342857483
+      - 0.01
+      - 0.18793849560973935
+      - 0.12987166185634627
+      - 0.010000000000000002
+      - 0.0
+      scattering:
+      - 0.01
+      - 0.01
+      - 0.01
+      - 0.01
+      - 0.15
+      - 0.16
+      - 0.16
+      - 0.16
+    deviation_groups:
+      low:
+        bands:
+        - 63
+        - 125
+        deviation_pct: 1.5
+      mid:
+        bands:
+        - 250
+        - 500
+        - 1000
+        deviation_pct: 0.5
+      high:
+        bands:
+        - 2000
+        - 4000
+        - 8000
+        deviation_pct: 0.4
+tag_to_material:
+  ceiling_plaster: My_Plasterboard_Ceiling
+  window: My_Glass_10mm
+  platform: My_Timber_Platform_Dense
+  walls_plasterboard: My_Painted_Plasterboard
+  door_timber: My_Solid_Core_Door
+  whiteboard: My_Whiteboard_Gloss
+  floor_linoleum: My_Linoleum_on_Slab
+metrics:
+  objective_metrics:
+  - t20
+  weights:
+    edt: 0.5
+    t20: 1.0
+    c50: 0.5
+  huber_delta:
+    edt: 0.5
+    t20: 1.0
+    c50: 0.5
+calculation:
+  simulation_type: hybrid
+  crossover_frequency_hz: 720
+  termination:
+    mode: energy_decay
+    energy_decay_threshold_db: 35
+    ir_length_s: 3.0
+  ga:
+    rays_per_source: 10000
+    max_reflections: 12
+    max_diffractions: 1
+    ray_energy_threshold_db: -60
+    scatter_model: sdk_default
+    image_source_order: 2
+  dg:
+    mesh_simplification: auto
+    smallest_feature_m: 0.1
+    max_courant: 0.7
+  postproc:
+    export_wavs: true
+    export_folder: results
+optimisation:
+  stage: A
+  population_size: 30
+  max_generations: 50
+  crossover_rate: 0.7
+  mutation_rate: 0.2
+  elite_size: 2
+  convergence_threshold: 0.001
+  convergence_generations: 10
+  parallel_evaluations: 4
+  random_seed: 42
+  results_folder: results/optimisation
+ga:
+  pop_size: 4
+  generations_A: 8
+  generations_B: 0
+  max_evaluations: 16
+  max_tokens: 7
+  alpha_sigma: 0.19
+  scatter_sigma: 0.05
+  patience_no_improvement: 3
+  min_improvement: 0.001
+  alpha_bounds:
+  - 0.01
+  - 0.99
+  scatter_bounds:
+  - 0.0
+  - 0.5
+  selection: tournament
+  tourn_k: 3
+  cx_prob: 0.5
+  mut_prob: 0.9
+  cx_eta: 0.3
+  stageA_metrics:
+  - t20
+  stageB_metrics:
+  - c50
+  - c80
+loss:
+  metrics:
+  - t20

@@ -4,19 +4,21 @@
 project:
   name: Classroom_OBJ
   run_label: "baseline_v2"          # optional tag appended to run folders
+
 model:
   name: classroom1
+
 paths:
   model_obj: C:/Users/usuario/Documents/TrebleSDK/v2/input/obj/classroom1.obj
   ground_truth_json: C:/Users/usuario/Documents/TrebleSDK/v2/data/omni/targets_measured_omni.json  
   directivity_cf2: C:/Users/usuario/Documents/TrebleSDK/v2/input/directivity/GenelecOy-8030_v2.cf2
-  working_dir: "results"             # base for run outputs
-  temp_dir: "results/.tmp"           # scratch
+  working_dir: "C:/Users/usuario/Documents/TrebleSDK/v2/results"    # <-- Use absolute path
+  temp_dir: "C:/Users/usuario/Documents/TrebleSDK/v2/results/.tmp"  # <-- Use absolute path
 
 bands:
   kind: octave                        # third | octave
   f_hz: [63, 125, 250, 500, 1000, 2000, 4000, 8000]
-  optimise_from_hz: 125              # ignore LF below this for optimisation loss
+  optimise_from_hz: 250               # ignore LF below this for optimisation loss
 
 # If you want the script to honour measured receiver codes, keep this structure.
 receivers:
@@ -46,10 +48,8 @@ source:
   kind: "directive"                  # omni | directive
   directivity_file: "@paths.directivity_cf2"
   position_m: [4.50, 0.53, 1.50]
-  orientation_deg_xyz: [0.0, 0.0, 0.0]   # optional, if Treble uses it
+  orientation_deg_xyz: [0.0, 0.0, 0.0]   
 
-# Mesh â†” materials: by default, areas come from the OBJ scan.
-# You can override specific mÂ² with area_m2_override.
 materials:
   # NOTE:
   # - m2 is optional; if omitted, we compute from mesh.
@@ -66,12 +66,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.15, 0.12, 0.10, 0.09, 0.08, 0.08, 0.08, 0.08]
+      absorption: [0.15, 0.01, 0.10, 0.09, 0.08, 0.08, 0.08, 0.08]
       scattering: [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
 
   My_Painted_Plasterboard:
     description: "Painted plasterboard walls"
@@ -81,12 +81,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.10, 0.08, 0.07, 0.06, 0.06, 0.05, 0.05, 0.05]
+      absorption: [0.10, 0.01, 0.07, 0.06, 0.06, 0.05, 0.05, 0.05]
       scattering: [0.07, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.10]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
 
   My_Glass_10mm:
     description: "Monolithic glass 10 mm"
@@ -96,12 +96,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.03, 0.03, 0.03, 0.04, 0.04, 0.05, 0.05, 0.05]
+      absorption: [0.03, 0.01, 0.03, 0.04, 0.04, 0.05, 0.05, 0.05]
       scattering: [0.20, 0.20, 0.25, 0.25, 0.30, 0.30, 0.30, 0.30]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
 
   My_Timber_Platform_Dense:
     description: "Timber platform, dense"
@@ -111,12 +111,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.06, 0.06, 0.06, 0.06, 0.07, 0.07, 0.07, 0.07]
+      absorption: [0.06, 0.01, 0.06, 0.06, 0.07, 0.07, 0.07, 0.07]
       scattering: [0.15, 0.15, 0.15, 0.15, 0.18, 0.18, 0.20, 0.20]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
 
   My_Solid_Core_Door:
     description: "Solid core door"
@@ -126,12 +126,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.15, 0.12, 0.10, 0.08, 0.07, 0.06, 0.06, 0.05]
+      absorption: [0.15, 0.01, 0.10, 0.08, 0.07, 0.06, 0.06, 0.05]
       scattering: [0.10, 0.10, 0.12, 0.12, 0.14, 0.14, 0.16, 0.16]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
 
   My_Whiteboard_Gloss:
     description: "Gloss whiteboard"
@@ -144,9 +144,10 @@ materials:
       absorption: [0.05, 0.04, 0.04, 0.03, 0.03, 0.03, 0.03, 0.03]
       scattering: [0.12, 0.12, 0.14, 0.14, 0.15, 0.16, 0.16, 0.16]
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
+
   My_Linoleum_on_Slab:
     description: "Linoleum on concrete slab"    
     type: "full_octave_absorption"
@@ -155,12 +156,12 @@ materials:
     optimise_absorption: true
     optimise_scattering: false
     anchors:
-      absorption: [0.01, 0.02, 0.02, 0.02, 0.03, 0.03, 0.03, 0.03]
+      absorption: [0.01, 0.01, 0.02, 0.02, 0.03, 0.03, 0.03, 0.03]
       scattering: [0.01, 0.01, 0.01, 0.01, 0.15, 0.16, 0.16, 0.16]  
     deviation_groups:
-      low:  { bands: [63, 125],               deviation_pct: 0.20 }
+      low:  { bands: [63, 125],               deviation_pct: 1.0 }
       mid:  { bands: [250, 500, 1000],        deviation_pct: 0.50 }
-      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.60 }
+      high: { bands: [2000, 4000, 8000],      deviation_pct: 0.40 }
       
 # Mapping from mesh tags (OBJ/SKP) to the logical material keys above.
 tag_to_material:
@@ -173,7 +174,7 @@ tag_to_material:
   floor_linoleum:       My_Linoleum_on_Slab
   
 
-# What weâ€™ll compare against the ground truth and how we weight it.
+# What we’ll compare against the ground truth and how we weight it.
 metrics:
   objective_metrics: ["t20"]         # or ["T20", "EDT", "C50"]
   weights:                           # optional per-metric weights (default = 1.0)
@@ -209,32 +210,23 @@ calculation:
     export_wavs: true
     export_folder: "results"         # relative to working_dir
 
-# Optimisation controller (Stage: A = absorption seed; B = GA refinement)
-optimisation:
-  stage: "A"                         # "A" (statistical seed) or "B" (full GA)
-  population_size: 30
-  max_generations: 50
-  crossover_rate: 0.7
-  mutation_rate: 0.2
-  elite_size: 2
-  convergence_threshold: 0.001
-  convergence_generations: 10
-  parallel_evaluations: 4
-  random_seed: 42
-  results_folder: "results/optimisation"   # under working_dir
-  # GA parameters
+# GA parameters (Stage 3 driver)
 ga:
-  pop_size: 18
-  generations_A: 12
-  generations_B: 10
-  alpha_sigma: 0.03         # std-dev for α perturbations
-  scatter_sigma: 0.05       # std-dev for s perturbations
-  alpha_bounds: [0.00, 1.00]
+  pop_size: 7
+  generations_A: 5
+  generations_B: 0
+  max_evaluations: 35        # 7 × 5 so Stage A can complete
+  max_tokens: 15 
+  alpha_sigma: 0.07          # std-dev for α perturbations
+  scatter_sigma: 0.05        # std-dev for s perturbations
+  patience_no_improvement: 3 # stop if no improvement for 3 evaluations
+  min_improvement: 0.001     # minimum improvement to count as progress
+  alpha_bounds: [0.01, 0.95]
   scatter_bounds: [0.00, 0.50]
-  selection: "tournament"   # or "roulette"
+  selection: "tournament"    # or "roulette"
   tourn_k: 3
-  cx_prob: 0.5
-  mut_prob: 0.7
-  cx_eta: 0.3               # blend crossover alpha
-  stageA_metrics: ["t20","t30"]
-  stageB_metrics: ["c50","c80"]
+  cx_prob: 0.7
+  mut_prob: 0.8
+  cx_eta: 0.3                # blend crossover alpha
+  stageA_metrics: ["t20"]
+  stageB_metrics: ["c50"]

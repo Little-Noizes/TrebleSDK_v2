@@ -1,0 +1,32 @@
+{
+  "project": "Classroom_OBJ",
+  "model": "classroom1",
+  "run_label": "GA_calib_006_A_20251118_104717",
+  "bands_hz": [
+    63,
+    125,
+    250,
+    500,
+    1000,
+    2000,
+    4000,
+    8000
+  ],
+  "metrics": [
+    "t20"
+  ],
+  "termination": {
+    "energy_decay_threshold_dB": 35.0,
+    "crossover_frequency_Hz": 720
+  },
+  "receivers": [
+    "R_30x00y",
+    "R_60x15y",
+    "R_00x20y",
+    "R_40x30y",
+    "R_15x40y"
+  ],
+  "results_dir": "C:\\Users\\usuario\\Documents\\TrebleSDK\\v2\\results\\GA_calib_006_A_20251118_104349",
+  "timestamp": "2025-11-18T10:54:02",
+  "loss": 0.274825866376288
+}

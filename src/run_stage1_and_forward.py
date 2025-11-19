@@ -491,12 +491,16 @@ def run_stage1_and_forward_sim(
     # ---- Apply materials to org library -------------------------------------
     print("--- 2) Materials applied to Treble library ---")
     
-    # Re-using the name_redirect logic, but we need the list of materials to check:
-    material_names_to_check = list(cfg.get("materials", {}).keys())
-    name_redirect: Dict[str, str] = {name: name for name in material_names_to_check} 
-    
-    # If your TSDK needs materials to be explicitly created in the library even if defined in CFG, 
-    # you might need to insert logic here, but for now, we assume materials are known/reusable.
+    # CRITICAL: Actually apply the alpha(f) values to the Treble material library
+    # This ensures GA-generated or Stage1 values are used in the simulation
+    if params_to_save:
+        print("[debug] Applying alpha(f) to Treble material library...")
+        name_redirect = _apply_alpha_to_materials(tsdk, params_to_save, allow_create=True)
+        print(f"[debug] Applied {len(name_redirect)} materials to library")
+    else:
+        # Fallback: just use material names as-is
+        material_names_to_check = list(cfg.get("materials", {}).keys())
+        name_redirect: Dict[str, str] = {name: name for name in material_names_to_check}
     
     # ---- Project & Model -----------------------------------------------------
     project_name = (cfg.get("project", {}) or {}).get("name") or "Treble_Project"
@@ -836,9 +840,10 @@ def _main():
     
     if args.params_in_file:
         print(f"Reading parameters from GA file: {args.params_in_file}")
-        # load_json is now imported, resolving the NameError
         ga_params = load_json(Path(args.params_in_file)) 
-        cfg = _apply_ga_params_to_materials(cfg, ga_params) 
+        cfg = _apply_ga_params_to_materials(cfg, ga_params)
+        # CRITICAL FIX: Extract alpha params so they get applied to Treble library
+        stage1_params_to_save = ga_params.get("alpha", {}) 
     else:
         print("Running Stage 1 statistical seed.")
         # When running a standard seed, run_stage1_and_forward_sim will 

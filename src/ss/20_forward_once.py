@@ -1,116 +1,132 @@
-# === Treble SDK import & Class Shims (definitive for your 2.3.x build) ========
-import importlib
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
-# Import the package
-try:
-    import treble_tsdk as treble
-except ImportError as e:
-    raise SystemExit(f"[FATAL] treble_tsdk not found in this venv: {e}")
+r"""
+Import OBJ, ensure materials, upload CF2 as directivity, run sim, export IRs.
+- Uses treble_tsdk -> treble.TSDK()
+- Uses source_directivity_library (with reuse if name exists)
+- Falls back to device_library if needed
+- Builds ALL receivers from your YAML (supports xyz_m or x/y/z), no YAML changes
+- Exports WAV IRs for every (source, receiver) pair
 
-# Resolve the TSDK client class (preferred location first, then fallback)
+Usage:
+  (venv_treble) PS> python .\src\20_forward_once.py --config .\configs\project.yaml
+"""
+
+from __future__ import annotations
+from pathlib import Path
+from datetime import datetime
+import sys
+import time
+import argparse
+import json
+
+# ─────────────────────────────────────────────────────────────────────
+# 0) Third-party
+# ─────────────────────────────────────────────────────────────────────
 try:
-    from treble_tsdk.tsdk import TSDK as _TSDK
-    TSDK = _TSDK
+    import yaml
 except Exception:
-    TSDK = getattr(treble, "TSDK", None)
-if TSDK is None:
-    raise SystemExit("[FATAL] Could not locate TSDK (treble_tsdk.tsdk.TSDK nor treble_tsdk.TSDK).")
+    print("[FATAL] PyYAML not installed. Run: pip install pyyaml", file=sys.stderr)
+    sys.exit(1)
 
-# Geometry
+# ─────────────────────────────────────────────────────────────────────
+# 1) IMPORT TREBLE (same pattern you’ve been using)
+# ─────────────────────────────────────────────────────────────────────
 try:
-    from treble_tsdk.utility_classes import Point3d
-except Exception:
-    try:
-        from treble_tsdk.core.geometry import Point3D as Point3d
-    except Exception:
-        Point3d = None
+    from treble_tsdk import treble
+    print("Using treble_tsdk")
+except ImportError:
+    from treble_tsdk import tsdk_namespace as treble
+    print("Using treble_tsdk2")
 
-# Sources (your probes show these live in core.source)
-try:
-    from treble_tsdk.core.source import Source, SourceType, SourceProperties
-except Exception as e:
-    raise SystemExit(f"[FATAL] Source classes missing: {e}")
+# ─────────────────────────────────────────────────────────────────────
+# 2) CONSTANTS / PATHS  (adjust if you move folders)
+# ─────────────────────────────────────────────────────────────────────
+OBJ_PATH = Path(r"C:\Users\usuario\Documents\TrebleSDK\Models\classroom1.obj")
+CF2_PATH = Path(r"C:\Users\usuario\Documents\TrebleSDK\data\001_classroom\GenelecOy-8030.cf2")
 
-# Receiver (separate module in your build)
-try:
-    from treble_tsdk.core.receiver import Receiver
-except Exception as e:
-    raise SystemExit(f"[FATAL] Receiver class missing: {e}")
+PROJECT  = "Classroom_OBJ"
+MODEL    = "classroom1_obj"
+SIM_NAME = f"classroom1_quickcheck_{datetime.now():%Y%m%d_%H%M%S}"  # timestamp to avoid clashes
 
-# Simulation
-try:
-    from treble_tsdk.core.simulation import SimulationDefinition, SimulationType
-except Exception as e:
-    raise SystemExit(f"[FATAL] Simulation classes missing: {e}")
-
-# Materials (no core.material in your build → use client.api_models)
-try:
-    from treble_tsdk.client.api_models import (
-        MaterialDefinition, MaterialCategory, MaterialRequestType, MaterialAssignment
-    )
-except Exception as e:
-    raise SystemExit(f"[FATAL] Material DTOs missing (client.api_models): {e}")
-
-# Final sanity check
-_missing = [n for n, cls in {
-    "TSDK": TSDK,
-    "Point3d": Point3d,
-    "Source": Source,
-    "Receiver": Receiver,
-    "SimulationDefinition": SimulationDefinition,
-    "SimulationType": SimulationType,
-    "MaterialDefinition": MaterialDefinition,
-    "MaterialCategory": MaterialCategory,
-    "MaterialRequestType": MaterialRequestType,
-    "MaterialAssignment": MaterialAssignment,
-}.items() if cls is None]
-if _missing:
-    raise SystemExit(f"[FATAL] Missing Treble classes: {', '.join(_missing)}")
-
-print("[OK] Treble SDK classes successfully defined.")
-
-
-# --- final check for required classes -----------------------------------------
-required_classes = {
-    'Point3d': Point3d,
-    'Source': Source,
-    'SourceProperties': SourceProperties,
-    'MaterialAssignment': MaterialAssignment,
-    'SimulationDefinition': SimulationDefinition,
+# layer → material name (matching your SketchUp/OBJ layer names)
+LAYER_TO_TREBLE = {
+    "walls_plasterboard": "My_Painted_Plasterboard",
+    "floor_linoleum":     "My_Linoleum_on_Slab",
+    "window":             "My_Glass_10mm",
+    "platform":           "My_Timber_Platform_Dense",
+    "door_timber":        "My_Solid_Core_Door",
+    "whiteboard":         "My_Whiteboard_Gloss",
+    "ceiling_plaster":    "My_Plasterboard_Ceiling",
 }
-missing = [name for name, val in required_classes.items() if val is None]
 
-if missing:
-    print(coloured(f"[FAILURE] Critical Treble SDK classes not found for this SDK build. Missing: {', '.join(missing)}", "red"))
-    sys.exit(1) 
+# Material definitions (same style you’ve been using)
+MATERIAL_DEFS = {
+    "My_Painted_Plasterboard": {
+        "description": "Painted 13 mm plasterboard on studs (example)",
+        "category": treble.MaterialCategory.gypsum,
+        "default_scattering": 0.08,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.12, 0.10, 0.08, 0.07, 0.06, 0.06, 0.06, 0.06],
+    },
+    "My_Linoleum_on_Slab": {
+        "description": "Linoleum on concrete slab (example)",
+        "category": treble.MaterialCategory.rigid,
+        "default_scattering": 0.05,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.02, 0.02, 0.02, 0.03, 0.03, 0.03, 0.03, 0.03],
+    },
+    "My_Glass_10mm": {
+        "description": "Monolithic glass 10 mm (example)",
+        "category": treble.MaterialCategory.windows,
+        "default_scattering": 0.02,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.10, 0.06, 0.04, 0.03, 0.02, 0.02, 0.02, 0.02],
+    },
+    "My_Timber_Platform_Dense": {
+        "description": "Dense timber platform (example)",
+        "category": treble.MaterialCategory.wood,
+        "default_scattering": 0.10,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.12, 0.09, 0.07, 0.06, 0.06, 0.06, 0.06, 0.06],
+    },
+    "My_Solid_Core_Door": {
+        "description": "Timber solid-core door (example)",
+        "category": treble.MaterialCategory.wood,
+        "default_scattering": 0.10,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.15, 0.12, 0.10, 0.08, 0.07, 0.07, 0.07, 0.07],
+    },
+    "My_Whiteboard_Gloss": {
+        "description": "Gloss laminate whiteboard (example)",
+        "category": treble.MaterialCategory.other,
+        "default_scattering": 0.05,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.10, 0.08, 0.06, 0.05, 0.04, 0.04, 0.04, 0.04],
+    },
+    "My_Plasterboard_Ceiling": {
+        "description": "Plain plasterboard ceiling (example)",
+        "category": treble.MaterialCategory.gypsum,
+        "default_scattering": 0.10,
+        "material_type": treble.MaterialRequestType.full_octave_absorption,
+        "coefficients": [0.15, 0.12, 0.10, 0.09, 0.08, 0.08, 0.08, 0.08],
+    },
+}
 
-print(coloured("[OK] Treble SDK classes successfully defined.", "cyan"))
-# ==============================================================================
+# ─────────────────────────────────────────────────────────────────────
+# 3) SMALL HELPERS (model, materials, directivity, receivers)
+# ─────────────────────────────────────────────────────────────────────
 
-
-# ============================ utils & helpers ================================
-
-def _now_tag():
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
-
-def _resolve_path_ref(cfg: dict, maybe_ref: str) -> str:
-    """Resolve @paths.* references used in YAML to actual path strings."""
-    if isinstance(maybe_ref, str) and maybe_ref.startswith("@paths."):
-        return cfg["paths"][maybe_ref.split(".", 1)[1]]
-    return maybe_ref
-
-def get_or_create_project(tsdk, name: str):
-    """Robust project getter across SDK variants."""
-    try:
-        return tsdk.get_or_create_project(name)
-    except Exception:
-        try:
-            return tsdk.projects.use(name)
-        except Exception:
-            return tsdk.projects.create(name=name)
-
-def get_model_by_name(project, name):
-    """Find a model in a project by name, handling various SDK methods (using project.get_models())."""
+def get_model_by_name(project, name: str):
+    for fn in ("get_model_by_name", "get_model"):
+        if hasattr(project, fn):
+            try:
+                m = getattr(project, fn)(name) or getattr(project, fn)(model_name=name)
+                if m is not None:
+                    return m
+            except Exception:
+                pass
     for lister in ("list_models", "get_models"):
         if hasattr(project, lister):
             try:
@@ -121,285 +137,266 @@ def get_model_by_name(project, name):
                 pass
     return None
 
-def get_or_import_model(project, name, path: Path):
-    """Gets an existing model or imports a new one, waiting for processing."""
+def get_or_import_model(project, name: str, path: Path):
     existing = get_model_by_name(project, name)
     if existing is not None:
         return existing
-    
-    # If not found, try to add it
+    if not path.exists():
+        raise FileNotFoundError(f"OBJ not found: {path}")
     model = project.add_model(model_name=name, model_file_path=str(path))
-    
     if model is None:
-        # Fallback to unique name if previous name is taken but object not returned
-        model = project.add_model(model_name=f"{name}_{_now_tag()}", model_file_path=str(path))
-    
+        # Name exists: reuse existing
+        m2 = get_model_by_name(project, name)
+        if m2 is not None:
+            return m2
+        # Else pick a timestamped name
+        model = project.add_model(
+            model_name=f"{name}_{datetime.now():%Y%m%d_%H%M%S}",
+            model_file_path=str(path)
+        )
     if hasattr(model, "wait_for_model_processing"):
         model.wait_for_model_processing()
     return model
 
-def ensure_material(tsdk, name: str, spec: dict, bands_hz: list[int]):
-    """
-    Ensures a material exists on the cloud, creating it if necessary.
-    """
+def ensure_material(tsdk, name: str, spec: dict):
     lib = getattr(tsdk, "material_library", None)
     if lib is None:
-        raise AttributeError("TSDK object is missing 'material_library'")
+        raise RuntimeError("This SDK build does not expose tsdk.material_library")
 
-    # Try to retrieve it first
+    # Reuse if exists
     if hasattr(lib, "get_by_name"):
         m = lib.get_by_name(name)
         if m is not None:
             return m
 
-    # If retrieval fails, create it
-    md = MaterialDefinition(
+    category = spec["category"]
+    if isinstance(category, str):
+        category_str = category.replace(" ", "_").lower()
+        category = getattr(treble.MaterialCategory, category_str, treble.MaterialCategory.other)
+
+    md = treble.MaterialDefinition(
         name=name,
-        description=spec.get("description", "Imported from YAML"),
-        category=getattr(MaterialCategory, spec.get("category", "rigid"), MaterialCategory.rigid),
+        description=spec.get("description", ""),
+        category=category,
         default_scattering=spec.get("default_scattering", 0.05),
-        material_type=MaterialRequestType.full_octave_absorption,
-        coefficients=spec.get("coefficients", [0.05] * len(bands_hz)),
+        material_type=spec.get("material_type", treble.MaterialRequestType.full_octave_absorption),
+        coefficients=spec["coefficients"],
     )
-    
     fitted = lib.perform_material_fitting(md)
     created = lib.create(fitted)
     return created
 
 def upload_cf2(tsdk, cf2_path: Path):
-    """
-    Upload CF2 to directivity library, ensuring a unique name.
-    """
+    """Upload CF2 to directivity library (reuse if name exists), or fall back to device library."""
     cf2_path = cf2_path.expanduser().resolve()
     if not cf2_path.exists():
         raise FileNotFoundError(f"CF2 file not found: {cf2_path}")
-    
-    # Use a unique name to avoid conflicts during upload/retrieval issues
-    name = f"{cf2_path.stem}_dir_{_now_tag()}"
 
+    base_name = cf2_path.stem
     lib = getattr(tsdk, "source_directivity_library", None)
     if lib is not None:
-        cat = getattr(treble, "SourceDirectivityCategory", None)
-        sub = getattr(treble, "SourceDirectivityAmplified", None)
-        
-        uploaded = lib.create_source_directivity(
-            name=name,
+        print("-> Using source_directivity_library")
+        # Try creating with a deterministic name; if it exists, reuse it
+        sd_obj = lib.create_source_directivity(
+            name=base_name,  # stable name to allow reuse
             source_directivity_file_path=str(cf2_path),
-            category=getattr(cat, 'amplified', 'Amplified'),
-            sub_category=getattr(sub, 'studio_and_broadcast_monitor', 'StudioAndBroadcastMonitor'),
+            category=treble.SourceDirectivityCategory.amplified,
+            sub_category=treble.SourceDirectivityAmplified.studio_and_broadcast_monitor,
+            description="Uploaded via OBJ+CF2+sim script",
+            manufacturer="Genelec Oy",
+            correct_ir_by_on_axis_spl_default=True,
         )
-        print(coloured(f"[OK] Uploaded CF2 to SourceDirectivityLibrary: {uploaded.name}", "green"))
-        return uploaded, "source_directivity"
+        if sd_obj is None:
+            # Name exists: reuse
+            try:
+                org_list = lib.get_organization_directivities()
+                for d in org_list:
+                    if getattr(d, "name", None) == base_name:
+                        print(f"✔ Reusing existing directivity: {base_name}")
+                        return d, "directivity"
+            except Exception:
+                pass
+            raise RuntimeError("Directivity creation returned None and reuse by name failed.")
+        return sd_obj, "directivity"
 
-    raise RuntimeError("This SDK build exposes neither source_directivity_library.")
+    # Fallback to device library
+    dev_lib = getattr(tsdk, "device_library", None)
+    if dev_lib is not None:
+        print(" -> source_directivity_library not found, using device_library")
+        device_name = base_name
+        try:
+            existing = dev_lib.get_device_by_name(device_name)
+            if existing:
+                print(f"✔ CF2 Device already exists: {existing.name}")
+                return existing, "device"
+        except Exception:
+            try:
+                for d in dev_lib.list_devices():
+                    if getattr(d, "name", "") == device_name:
+                        print(f"✔ CF2 Device already exists: {d.name}")
+                        return d, "device"
+            except Exception:
+                pass
 
-def build_source_from_cf2(cf2_obj, cf2_type: str, position: Point3d):
-    """
-    Create a Treble source (directive) from an uploaded CF2 object.
-    """
+        device_obj = dev_lib.import_device(str(cf2_path))
+        print(f"[OK] Imported CF2 as Device: {device_obj.name}")
+        return device_obj, "device"
+
+    raise RuntimeError("This SDK build exposes neither source_directivity_library nor device_library.")
+
+def build_source_from_cf2(cf2_obj, cf2_type: str, position: treble.Point3d):
+    """Create a Treble source (directive) from an uploaded CF2 object."""
     base_name = getattr(cf2_obj, "name", "CF2_Directivity")
-    safe_label = "".join(ch if ch.isalnum() else "_" for ch in base_name).strip("_")
-    
-    source_props = SourceProperties(
-        # Source type is inferred as directional when source_directivity is provided.
-        source_directivity=cf2_obj,
-    )
-    
-    src = Source(
-        label=safe_label[:30], # Truncate label to prevent API errors
-        location=position,      # FIX: use 'location'
-        source_properties=source_props,
-    )
-    return src
+    safe_label = "".join(ch if ch.isalnum() else "_" for ch in base_name)
 
-# ================================== REPORTING FUNCTIONS (The missing pieces) =====================================
+    if cf2_type == "device":
+        # Some builds allow direct device on Source ctor
+        try:
+            return treble.Source(
+                label=safe_label,
+                position=position,
+                device=cf2_obj,
+                source_type=treble.SourceType.directive,
+            )
+        except Exception:
+            pass
 
-def _print_config_echo(cfg: Dict[str, Any]):
-    """Prints a summary of the configuration loaded from project.yaml."""
-    echo_header("Configuration Summary")
-    echo_kv("Project Name", cfg["project"]["name"])
-    echo_kv("Run Label", cfg["project"].get("run_label", "N/A"))
-    echo_kv("Model File", Path(cfg["paths"]["model_obj"]).name)
-    echo_kv("Ground Truth File", Path(cfg["paths"]["ground_truth_json"]).name)
-    
-    echo_header("Materials to be Assigned")
-    mat_names = list(cfg["materials"].keys())
-    echo_list(label="Materials", items=mat_names)
-
-    echo_header("Calculation Settings")
-    calc_cfg = cfg["calculation"]
-    echo_kv("Simulation Type", calc_cfg["simulation_type"])
-    echo_kv("Crossover Freq (Hz)", calc_cfg["crossover_frequency_hz"])
-    echo_kv("Termination Mode", calc_cfg["termination"]["mode"])
-    echo_kv("GA Rays per Source", calc_cfg["ga"]["rays_per_source"])
-
-def _process_results(cfg: Dict[str, Any], gt_avg: Dict[str, Any], results_json_path: Path):
-    """Loads simulation results, compares against ground truth, and reports metrics."""
-    # 1. Load results and process the data structures
-    with open(results_json_path, 'r') as f:
-        results_raw = json.load(f)
-    
-    # This function is assumed to be defined in src.metrics
-    pred_metrics, pred_rce_avg = process_simulation_results(
-        results_raw, 
-        cfg["metrics"]["objective_metrics"], 
-        cfg["_bands"]["f_hz"]
-    )
-    
-    # 2. Per-Metric Comparison Tables
-    for metric_name in cfg["metrics"]["objective_metrics"]:
-        target_values = gt_avg["metrics"][metric_name]
-        predicted_values = pred_rce_avg["metrics"][metric_name]
-
-        echo_header(f"Frequency-Dependent Comparison: {metric_name}")
-        table_compare_per_band(
-            metric_name=metric_name,
-            bands_hz=cfg["_bands"]["f_hz"],
-            targets=target_values,
-            predictions=predicted_values
-        )
-
-    # 3. Overall Error Summary (This uses the summarisation function from src.reporting)
-    diffs, mae, rmse = summarise_receiver_errors(
-        ground_truth=gt_avg, 
-        predictions=pred_rce_avg, 
-        metrics_to_use=cfg["metrics"]["objective_metrics"],
-        huber_delta=cfg["metrics"]["huber_delta"],
-        weights=cfg["metrics"]["weights"],
-        optimise_from_hz=cfg["_bands"]["optimise_from_hz"]
-    )
-    
-    if mae is not None and rmse is not None:
-        echo_header("OVERALL ERROR SUMMARY")
-        echo_kv("MAE (avg over rcvs/metrics/bands)", f"{mae:.3f}")
-        echo_kv("RMSE (avg over rcvs/metrics/bands)", f"{rmse:.3f}")
-
-
-# ================================== CORE TREBLE RUNNER =====================================
-
-def _run_treble_forward(cfg: Dict[str, Any], out_dir: Path) -> Path:
-    """
-    Connects to the Treble SDK, loads the model, builds the simulation
-    definition, runs the simulation, and downloads the results.
-    """
-    
-    # 1. TSDK Client Instantiation (FIXED for UnboundLocalError)
-    # Initialize tsdk to None to prevent UnboundLocalError if the conditional block fails.
-    # 1) TSDK client (your build exposes it via treble_tsdk.tsdk)
-    if TSDK is None:
-        raise RuntimeError("treble_tsdk.tsdk.TSDK not found; update Treble SDK or adjust import path.")
+    # Preferred: directivity object id
     try:
-        tsdk = TSDK()
-    except Exception as e:
-        raise RuntimeError(f"Could not instantiate TSDK(): {e}")
-  
-    # 2. Project and Model
-    PROJECT = cfg["project"]["name"]
-    MODEL_PATH = Path(_resolve_path_ref(cfg, cfg["paths"]["model_obj"])).resolve()
-    MODEL_NAME = MODEL_PATH.stem
+        return treble.Source.make_directive(location=position, label=safe_label, source_directivity=cf2_obj)
+    except Exception:
+        # Fallback: omni + attach directivity id via SourceProperties
+        src = treble.Source.make_omni(label=safe_label, position=position)
+        if hasattr(cf2_obj, "id"):
+            try:
+                src.directivity_id = cf2_obj.id
+            except Exception:
+                try:
+                    sp = treble.SourceProperties(directivity_id=cf2_obj.id)
+                    src.source_properties = sp
+                except Exception:
+                    pass
+        return src
 
+# ── Receivers from YAML (standalone; no YAML changes required) ───────────────
+def extract_receivers_from_yaml(cfg: dict) -> list[dict]:
+    """
+    Returns list of receivers as dicts: {'label','x','y','z','type','tags'}
+    Accepts either:
+      - receivers: [{xyz_m:[x,y,z], label:...}]  (preferred)
+      - receivers: [{x:..., y:..., z:..., label:...}]
+    """
+    rcvs = cfg.get("receivers")
+    if rcvs is None:
+        return []
+    if isinstance(rcvs, dict):
+        rcvs = rcvs.get("items", [])
+    if not isinstance(rcvs, list):
+        raise ValueError("'receivers' must be a list (or a dict containing 'items').")
 
-    proj = get_or_create_project(tsdk, PROJECT)
-    print(coloured(f"[OK] Using Treble Project: {proj.name}", "green"))
+    out: list[dict] = []
+    for i, r in enumerate(rcvs):
+        if not isinstance(r, dict):
+            raise ValueError(f"Receiver at index {i} must be a mapping/object.")
+        label = r.get("label") or r.get("code") or f"R{i+1}"
+        pos = r.get("xyz_m")
+        if isinstance(pos, (list, tuple)) and len(pos) == 3:
+            x, y, z = float(pos[0]), float(pos[1]), float(pos[2])
+        else:
+            try:
+                x = float(r.get("x"))
+                y = float(r.get("y"))
+                z = float(r.get("z"))
+            except (TypeError, ValueError):
+                raise ValueError(f"Receiver '{label}': position must be 'xyz_m: [x,y,z]' or separate x/y/z keys.")
+        rtype = (r.get("type") or "mono").strip().lower()
+        if rtype not in ("mono", "spatial"):
+            rtype = "mono"
+        tags = r.get("tags") if isinstance(r.get("tags"), list) else []
+        out.append({"label": label, "x": x, "y": y, "z": z, "type": rtype, "tags": tags})
+    return out
 
-    model = get_or_import_model(proj, MODEL_NAME, MODEL_PATH)
-    print(coloured(f"[OK] Using Treble Model: {model.name} ({model.id})", "green"))
-    
-    # 3. Materials
-    BAND_FREQS = cfg["_bands"]["f_hz"]
-    
-    # Ensure all required materials exist in the library
-    lib_materials = {}
-    for mat_name, mat_spec in cfg["materials"].items():
-        lib_materials[mat_name] = ensure_material(tsdk, mat_name, mat_spec, BAND_FREQS)
-    print(coloured(f"[OK] Defined {len(lib_materials)} unique materials.", "green"))
+# ─────────────────────────────────────────────────────────────────────
+# 4) MAIN
+# ─────────────────────────────────────────────────────────────────────
+def main():
+    # CLI: only used to read YAML (for receivers)
+    ap = argparse.ArgumentParser(description="Treble forward simulation with YAML receivers.")
+    ap.add_argument("--config", required=True, help="Path to project.yaml (used to read receivers).")
+    args = ap.parse_args()
 
-    # Create Material Assignments
-    mat_assignments = []
-    tag_to_material = cfg["model"]["tag_to_material"]
-    
-    # Note: MaterialAssignment is now aliased from MaterialAssignmentDto
-    for tag, mat_name in tag_to_material.items():
-        mat = lib_materials[mat_name]
-        
-        # Check if the tag exists in the model layers (optional but useful check)
-        # model_layers_info = model.get_layers_info()
-        # if tag not in [layer.label for layer in model_layers_info]:
-        #     print(coloured(f"[WARN] Material tag '{tag}' not found in model layers. Skipping assignment.", "yellow"))
-        #     continue
+    cfg_path = Path(args.config).expanduser().resolve()
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Config not found: {cfg_path}")
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
 
-        mat_assignments.append(
-            MaterialAssignment(
-                layer_label=tag,
-                material_id=mat.id,
-            )
-        )
-    print(coloured(f"[OK] Created {len(mat_assignments)} material assignments.", "green"))
-    
-    # 4. Source Setup (CF2 Directivity)
-    CF2_PATH = Path(_resolve_path_ref(cfg, cfg["paths"]["cf2_path"]))
-    source_cfg = cfg["source"]
-    
+    tsdk = treble.TSDK()
+    proj = tsdk.get_or_create_project(PROJECT)
+    print("[OK] Using project:", proj.name)
+
+    model = get_or_import_model(proj, MODEL, OBJ_PATH)
+    print("Using model:", model.name)
+
+    # Ensure materials (Option B: create/reuse in org library)
+    materials_by_name = {}
+    for mat_name, spec in MATERIAL_DEFS.items():
+        mobj = ensure_material(tsdk, mat_name, spec)
+        materials_by_name[mat_name] = mobj
+        print("[OK] Material ready:", mat_name)
+
+    assignments = [
+        treble.MaterialAssignment(layer_name=layer, material=materials_by_name[mat_name])
+        for layer, mat_name in LAYER_TO_TREBLE.items()
+    ]
+
+    # Source position (as you had it)
+    src_pos = treble.Point3d(4.5, 0.53, 1.5)
+
+    # Receivers from YAML (this is the new bit)
+    receivers_cfg = extract_receivers_from_yaml(cfg)
+    if not receivers_cfg:
+        raise RuntimeError("No receivers defined in YAML file.")
+    rcv_objs = []
+    for r in receivers_cfg:
+        rpos = treble.Point3d(r["x"], r["y"], r["z"])
+        if r["type"] == "spatial" and hasattr(treble.Receiver, "make_spatial"):
+            rcv = treble.Receiver.make_spatial(position=rpos, label=r["label"])
+        else:
+            rcv = treble.Receiver.make_mono(position=rpos, label=r["label"])
+        rcv_objs.append(rcv)
+    print(f"✔ {len(rcv_objs)} receivers created from YAML: {[r.label for r in rcv_objs]}")
+
+    # 1) Upload or reuse CF2
     cf2_obj, cf2_type = upload_cf2(tsdk, CF2_PATH)
-    
-    # Position uses Point3d (which was defined by the shim)
-    source_pos = Point3d(
-        x=source_cfg["position_m"]["x"],
-        y=source_cfg["position_m"]["y"],
-        z=source_cfg["position_m"]["z"],
-    )
-    src = build_source_from_cf2(cf2_obj, cf2_type, source_pos)
-    
-    # 5. Receiver Setup
-    rcvs = []
-    rcv_cfg = cfg["receivers"]
-    for i, pos_m in enumerate(rcv_cfg):
-        rcvs.append(
-            Receiver(
-                label=f"rcv_{i+1}",
-                location=Point3d(
-                    x=pos_m["x"],
-                    y=pos_m["y"],
-                    z=pos_m["z"],
-                )
-            )
-        )
-    
-    # 6. Simulation Definition
-    SIM_NAME = cfg["_run_id"]
-    calc_cfg = cfg["calculation"]
-    
-    # Note: SimulationDefinition is now aliased from SimulationDto
-    sim_def = SimulationDefinition(
-        name=SIM_NAME,
-        model_id=model.id,
-        sources=[src],
-        receivers=rcvs,
-        material_assignments=mat_assignments,
-        simulation_type=SimulationType.HYBRID, # Enum defined by shim
-        
-        # Calculation Settings
-        crossover_frequency_hz=calc_cfg["crossover_freq_hz"],
-        termination_mode=getattr(TerminationMode, calc_cfg["termination_mode"], TerminationMode.energy_decay), # Enum defined by shim
-        ga_rays_per_source=calc_cfg["ga_rays_per_source"],
-        
-        # Metric Settings
-        objective_metrics=cfg["metrics"]["objective_metrics"],
-        band_frequencies_hz=BAND_FREQS,
-    )
-    
-    # 7. Run Simulation
-    sim = proj.run_simulation(sim_def)
-    print(coloured(f"\n[OK] Launched simulation: {sim.name} ({sim.id})", "green"))
-    print(f"Monitoring status... check Treble portal for details.")
+    print(f"[OK] CF2 ready as {cf2_type}: {getattr(cf2_obj, 'name', 'unknown')}")
 
-    # 8. Monitor Status
+    # 2) Build source from CF2
+    src = build_source_from_cf2(cf2_obj, cf2_type, src_pos)
+    print("[OK] Source built:", src.label)
+
+    # 3) Simulation definition
+    sim_def = treble.SimulationDefinition(
+        name=SIM_NAME,
+        model=model,
+        material_assignment=assignments,
+        source_list=[src],
+        receiver_list=rcv_objs,  # ← all receivers from YAML
+        simulation_type=treble.SimulationType.hybrid,
+        crossover_frequency=720,     # keep both, your env tolerates both
+        energy_decay_threshold=35,   # per your preference
+    )
+
+    sim = proj.add_simulation(definition=sim_def)
+    print("Starting simulation…")
+    proj.start_simulations()
+    print(f"Simulation {sim.name} started. Waiting for completion...")
+
+    # Wait loop
+    MAX_WAIT_SECONDS = 1800
     start_time = time.time()
-    for _ in range(0, 60):  # Check every 30s for max 30 mins
+    time.sleep(10)
+    while time.time() - start_time < MAX_WAIT_SECONDS:
         time.sleep(30)
-        
-        # Robust status check for older SDK versions
-        sim_status = ""
         try:
             sim_status = sim.get_status().lower()
         except AttributeError:
@@ -414,49 +411,51 @@ def _run_treble_forward(cfg: Dict[str, Any], out_dir: Path) -> Path:
     else:
         raise TimeoutError("Simulation timed out after 30 minutes.")
 
-    # 9. Results Download and Processing
-    print(coloured("\n[INFO] Simulation finished. Downloading results...", "cyan"))
-    
-    # Note: The rest of the script is assumed to handle result retrieval and metric processing.
-    # The return value is typically the path to the simulation results JSON.
-    hybrid_json_path = out_dir / f"{SIM_NAME}_hybrid_results.json"
-    
-    # Placeholder for actual result retrieval logic, which is usually:
-    # res_obj = sim.get_results_object(results_directory=str(out_dir))
-    # actual_results = res_obj.get_hybrid_results_for_project_metrics()
-    
-    # For now, we return the path where results would be saved if this script included the download logic.
-    return hybrid_json_path
+    # Results
+    out = Path("results") / sim.name
+    out.mkdir(parents=True, exist_ok=True)
+    res = sim.get_results_object(results_directory=str(out))
+    exported_count = 0
+    # Be tolerant: different builds expose sources/receivers on sim or on sim_def
+    sim_sources = getattr(sim, "sources", None) or getattr(sim_def, "source_list", [])
+    sim_receivers = getattr(sim, "receivers", None) or getattr(sim_def, "receiver_list", [])
 
-# ================================== main =====================================
+    for source in sim_sources:
+        s_label = getattr(source, "label", None) or getattr(source, "name", "S")
+        for receiver in sim_receivers:
+            r_label = getattr(receiver, "label", None) or getattr(receiver, "name", "R")
+            try:
+                mono_ir = res.get_mono_ir(source=s_label, receiver=r_label)
+                wav_path = out / f"{s_label}-{r_label}.wav"
+                mono_ir.write_to_wav(path_to_file=str(wav_path))
+                exported_count += 1
+            except Exception as e:
+                print(f"Error exporting IR for {s_label} → {r_label}: {e}")
 
-def main():
-    cfg = load_config("configs/project.yaml")
-    
-    # Set the internal run ID
-    run_label = cfg["project"].get("run_label", "default_run")
-    cfg["_run_id"] = run_label.lower().replace(" ", "_")
-    
-    validate_config(cfg)
+    if exported_count:
+        print(f"IRs exported to {exported_count} WAV file(s) in: {out.resolve()}")
+    else:
+        print("No WAVs exported; raw results saved to:", out.resolve())
 
-    # Echo inputs (OBJ, materials, source, receivers, metrics)
-    _print_config_echo(cfg)
+    # Also drop a small run receipt
+    receipt = {
+        "project": PROJECT,
+        "model": getattr(model, "name", MODEL),
+        "sources": [s_label],
+        "receivers": [getattr(r, "label", None) or getattr(r, "name", "R") for r in sim_receivers],
+        "termination": {"energy_decay_threshold_dB": 35, "crossover_frequency_Hz": 720},
+        "results_dir": str(out.resolve()),
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    }
+    (out / "run_receipt.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    print(" Done.")
 
-    # Determine paths
-    project_root = Path(__file__).resolve().parents[1]
-    run_dir = ensure_dir(project_root / cfg["paths"]["working_dir"] / cfg["_run_id"])
-    fwd_dir = ensure_dir(run_dir / f"forward_{_now_tag()}")
-
-    # Targets (averaged over receivers for baseline display)
-    gt = load_ground_truth(project_root / cfg["paths"]["ground_truth_json"])
-    gt_avg = targets_avg_over_receivers(gt, cfg["metrics"]["objective_metrics"], cfg["_bands"]["f_hz"])
-
-    # --- Run the Treble forward ------------------------------------------------
-    hybrid_json_path = _run_treble_forward(cfg, fwd_dir)
-    # ---------------------------------------------------------------------------
-
-    # Process and display results
-    _process_results(cfg, gt_avg, hybrid_json_path)
-    
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted.", file=sys.stderr)
+        sys.exit(130)
+    except Exception as e:
+        print(f"[FATAL] {e}", file=sys.stderr)
+        sys.exit(1)
